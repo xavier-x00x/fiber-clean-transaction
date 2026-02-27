@@ -8,8 +8,5 @@ import (
 )
 
 func GetDBWithTx(ctx context.Context, db *gorm.DB) *gorm.DB {
-	if tx, ok := transaction.GetTx(ctx); ok {
-		return tx
-	}
-	return db
+	return transaction.DBFromContext(ctx, db)
 }

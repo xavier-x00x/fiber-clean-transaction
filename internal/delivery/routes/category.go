@@ -18,7 +18,7 @@ func (r *CategoryRoutes) GetModuleName() string {
 
 func (r *CategoryRoutes) RegisterHandler(c HandlerContainer) {
 	// Initialize dependencies khusus untuk route ini
-	tr := transaction.NewGormRunner(c.DB)
+	tr := transaction.NewGormUnitOfWork(c.DB)
 	vh := validation.NewValidatorHelper(c.DB)
 	rp := infrastructure.NewCategoryRepository(c.DB)
 	uc := usecase.NewCategoryUsecase(rp, tr, vh)

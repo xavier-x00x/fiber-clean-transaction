@@ -4,7 +4,6 @@ import (
 	"context"
 	"fiber-clean-transaction/internal/domain/entity"
 	"fiber-clean-transaction/internal/domain/repository"
-	"fiber-clean-transaction/internal/transaction"
 	"fmt"
 	"math"
 	"strings"
@@ -96,19 +95,19 @@ func (r *UnitGormRepo) FindByCode(ctx context.Context, code string) (*entity.Uni
 	return &unit, err
 }
 
-func (r *UnitGormRepo) Create(ctx context.Context, tx transaction.Transaction, unit *entity.Unit) error {
+func (r *UnitGormRepo) Create(ctx context.Context, unit *entity.Unit) error {
 	// Type assertion untuk mengkonversi abstraksi ke implementasi konkret
 	gormTx := GetDBWithTx(ctx, r.db)
 	return gormTx.WithContext(ctx).Create(unit).Error
 }
 
-func (r *UnitGormRepo) Update(ctx context.Context, tx transaction.Transaction, id uint, unit *entity.Unit) error {
+func (r *UnitGormRepo) Update(ctx context.Context, id uint, unit *entity.Unit) error {
 	// Type assertion untuk mengkonversi abstraksi ke implementasi konkret
 	gormTx := GetDBWithTx(ctx, r.db)
 	return gormTx.WithContext(ctx).Model(&entity.Unit{}).Where("id = ?", id).Updates(unit).Error
 }
 
-func (r *UnitGormRepo) Delete(ctx context.Context, tx transaction.Transaction, id uint) error {
+func (r *UnitGormRepo) Delete(ctx context.Context, id uint) error {
 	// Type assertion untuk mengkonversi abstraksi ke implementasi konkret
 	gormTx := GetDBWithTx(ctx, r.db)
 	return gormTx.WithContext(ctx).Delete(&entity.Unit{}, id).Error

@@ -12,14 +12,14 @@ import (
 
 type UnitUsecase struct {
 	repo      repository.UnitRepository
-	txManager transaction.TransactionManager
+	uow       transaction.UnitOfWork
 	validator *validation.ValidatorHelper
 }
 
-func NewUnitUsecase(r repository.UnitRepository, t transaction.TransactionManager, v *validation.ValidatorHelper) *UnitUsecase {
+func NewUnitUsecase(r repository.UnitRepository, uow transaction.UnitOfWork, v *validation.ValidatorHelper) *UnitUsecase {
 	return &UnitUsecase{
 		repo:      r,
-		txManager: t,
+		uow:       uow,
 		validator: v,
 	}
 }
@@ -76,7 +76,7 @@ func (u *UnitUsecase) Create(ctx context.Context, request *dto.UnitRequest) erro
 		return err
 	}
 	// ✅ UseCase tidak tahu tentang GORM, hanya menggunakan abstraksi
-	txErr := u.txManager.WithTransaction(ctx, func(ctx context.Context, tx transaction.Transaction) error {
+	return u.uow.Do(ctx, func(ctx context.Context) error {
 
 		unit := &entity.Unit{
 			Code:   request.Code,
@@ -84,13 +84,11 @@ func (u *UnitUsecase) Create(ctx context.Context, request *dto.UnitRequest) erro
 			Status: request.Status,
 		}
 
-		if err := u.repo.Create(ctx, tx, unit); err != nil {
+		if err := u.repo.Create(ctx, unit); err != nil {
 			return utils.Internal(err.Error(), err)
 		}
 		// lakukan logika lain ...
 
 		return nil // berhasil di commit
 	})
-
-	return txErr
 }

@@ -11,16 +11,16 @@ import (
 )
 
 type CategoryUsecase struct {
-	repo      repository.CategoryRepository
-	txManager transaction.UseCaseRunner
 	validator *validation.ValidatorHelper
+	uow       transaction.UnitOfWork
+	repo      repository.CategoryRepository
 }
 
-func NewCategoryUsecase(r repository.CategoryRepository, t transaction.UseCaseRunner, v *validation.ValidatorHelper) *CategoryUsecase {
+func NewCategoryUsecase(r repository.CategoryRepository, uow transaction.UnitOfWork, v *validation.ValidatorHelper) *CategoryUsecase {
 	return &CategoryUsecase{
-		repo:      r,
-		txManager: t,
 		validator: v,
+		uow:       uow,
+		repo:      r,
 	}
 }
 
@@ -76,7 +76,7 @@ func (u *CategoryUsecase) Create(ctx context.Context, request *dto.CategoryReque
 		return err
 	}
 	// ✅ UseCase tidak tahu tentang GORM, hanya menggunakan abstraksi
-	txErr := u.txManager.WithTransaction(ctx, func(ctx context.Context) error {
+	return u.uow.Do(ctx, func(ctx context.Context) error {
 
 		category := &entity.Category{
 			StoreCode:   request.StoreCode,
@@ -93,8 +93,6 @@ func (u *CategoryUsecase) Create(ctx context.Context, request *dto.CategoryReque
 
 		return nil // berhasil di commit
 	})
-
-	return txErr
 }
 
 func (u *CategoryUsecase) Update(ctx context.Context, id uint, request *dto.CategoryRequest) error {
@@ -103,7 +101,7 @@ func (u *CategoryUsecase) Update(ctx context.Context, id uint, request *dto.Cate
 		return err
 	}
 	// ✅ UseCase tidak tahu tentang GORM, hanya menggunakan abstraksi
-	txErr := u.txManager.WithTransaction(ctx, func(ctx context.Context) error {
+	return u.uow.Do(ctx, func(ctx context.Context) error {
 
 		// cek apakah data ada
 		if _, err := u.repo.FindById(ctx, id); err != nil {
@@ -125,13 +123,11 @@ func (u *CategoryUsecase) Update(ctx context.Context, id uint, request *dto.Cate
 
 		return nil // berhasil di commit
 	})
-
-	return txErr
 }
 
 func (u *CategoryUsecase) Delete(ctx context.Context, id uint) error {
 	// ✅ UseCase tidak tahu tentang GORM, hanya menggunakan abstraksi
-	txErr := u.txManager.WithTransaction(ctx, func(ctx context.Context) error {
+	return u.uow.Do(ctx, func(ctx context.Context) error {
 
 		// cek apakah data ada
 		if _, err := u.repo.FindById(ctx, id); err != nil {
@@ -145,6 +141,4 @@ func (u *CategoryUsecase) Delete(ctx context.Context, id uint) error {
 
 		return nil // berhasil di commit
 	})
-
-	return txErr
 }

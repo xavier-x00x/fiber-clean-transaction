@@ -11,15 +11,15 @@ import (
 )
 
 type StoreUsecase struct {
-	repo      repository.StoreRepository
-	txManager transaction.UseCaseRunner
 	validator *validation.ValidatorHelper
+	uow       transaction.UnitOfWork
+	repo      repository.StoreRepository
 }
 
-func NewStoreUsecase(r repository.StoreRepository, t transaction.UseCaseRunner, v *validation.ValidatorHelper) *StoreUsecase {
+func NewStoreUsecase(r repository.StoreRepository, uow transaction.UnitOfWork, v *validation.ValidatorHelper) *StoreUsecase {
 	return &StoreUsecase{
 		repo:      r,
-		txManager: t,
+		uow:       uow,
 		validator: v,
 	}
 }
@@ -79,7 +79,7 @@ func (u *StoreUsecase) Create(ctx context.Context, request *dto.StoreRequest) er
 	}
 
 	// ✅ UseCase tidak tahu tentang GORM, hanya menggunakan abstraksi
-	txErr := u.txManager.WithTransaction(ctx, func(ctx context.Context) error {
+	return u.uow.Do(ctx, func(ctx context.Context) error {
 
 		store := &entity.Store{
 			Code:    request.Code,
@@ -100,8 +100,6 @@ func (u *StoreUsecase) Create(ctx context.Context, request *dto.StoreRequest) er
 
 		return nil // berhasil di commit
 	})
-
-	return txErr
 }
 
 func (u *StoreUsecase) Update(ctx context.Context, id uint, request *dto.StoreRequest) error {
@@ -112,7 +110,7 @@ func (u *StoreUsecase) Update(ctx context.Context, id uint, request *dto.StoreRe
 	}
 
 	// ✅ UseCase tidak tahu tentang GORM, hanya menggunakan abstraksi
-	txErr := u.txManager.WithTransaction(ctx, func(ctx context.Context) error {
+	return u.uow.Do(ctx, func(ctx context.Context) error {
 
 		// cek apakah data ada
 		if _, err := u.repo.FindById(id); err != nil {
@@ -138,13 +136,11 @@ func (u *StoreUsecase) Update(ctx context.Context, id uint, request *dto.StoreRe
 
 		return nil // berhasil di commit
 	})
-
-	return txErr
 }
 
 func (u *StoreUsecase) Delete(ctx context.Context, id uint) error {
 	// ✅ UseCase tidak tahu tentang GORM, hanya menggunakan abstraksi
-	txErr := u.txManager.WithTransaction(ctx, func(ctx context.Context) error {
+	return u.uow.Do(ctx, func(ctx context.Context) error {
 
 		// cek apakah data ada
 		if _, err := u.repo.FindById(id); err != nil {
@@ -158,6 +154,4 @@ func (u *StoreUsecase) Delete(ctx context.Context, id uint) error {
 
 		return nil // berhasil di commit
 	})
-
-	return txErr
 }

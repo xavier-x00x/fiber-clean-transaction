@@ -11,16 +11,16 @@ import (
 )
 
 type RoleUsecase struct {
-	repo      repository.RoleRepository
-	txManager transaction.UseCaseRunner
 	validator *validation.ValidatorHelper
+	uow       transaction.UnitOfWork
+	repo      repository.RoleRepository
 }
 
-func NewRoleUsecase(r repository.RoleRepository, t transaction.UseCaseRunner, v *validation.ValidatorHelper) *RoleUsecase {
+func NewRoleUsecase(r repository.RoleRepository, uow transaction.UnitOfWork, v *validation.ValidatorHelper) *RoleUsecase {
 	return &RoleUsecase{
-		repo:      r,
-		txManager: t,
 		validator: v,
+		uow:       uow,
+		repo:      r,
 	}
 }
 
@@ -79,7 +79,7 @@ func (u *RoleUsecase) Create(ctx context.Context, request *dto.RoleRequest) erro
 	}
 
 	// ✅ UseCase tidak tahu tentang GORM, hanya menggunakan abstraksi
-	txErr := u.txManager.WithTransaction(ctx, func(ctx context.Context) error {
+	return u.uow.Do(ctx, func(ctx context.Context) error {
 
 		Role := &entity.Role{
 			Name: request.Name,
@@ -92,8 +92,6 @@ func (u *RoleUsecase) Create(ctx context.Context, request *dto.RoleRequest) erro
 
 		return nil // berhasil di commit
 	})
-
-	return txErr
 }
 
 func (u *RoleUsecase) Update(ctx context.Context, id uint, request *dto.RoleRequest) error {
@@ -104,7 +102,7 @@ func (u *RoleUsecase) Update(ctx context.Context, id uint, request *dto.RoleRequ
 	}
 
 	// ✅ UseCase tidak tahu tentang GORM, hanya menggunakan abstraksi
-	txErr := u.txManager.WithTransaction(ctx, func(ctx context.Context) error {
+	return u.uow.Do(ctx, func(ctx context.Context) error {
 
 		// cek apakah data ada
 		if _, err := u.repo.FindById(id); err != nil {
@@ -122,13 +120,11 @@ func (u *RoleUsecase) Update(ctx context.Context, id uint, request *dto.RoleRequ
 
 		return nil // berhasil di commit
 	})
-
-	return txErr
 }
 
 func (u *RoleUsecase) Delete(ctx context.Context, id uint) error {
 	// ✅ UseCase tidak tahu tentang GORM, hanya menggunakan abstraksi
-	txErr := u.txManager.WithTransaction(ctx, func(ctx context.Context) error {
+	return u.uow.Do(ctx, func(ctx context.Context) error {
 
 		// cek apakah data ada
 		if _, err := u.repo.FindById(id); err != nil {
@@ -142,6 +138,4 @@ func (u *RoleUsecase) Delete(ctx context.Context, id uint) error {
 
 		return nil // berhasil di commit
 	})
-
-	return txErr
 }
