@@ -1,0 +1,234 @@
+package utils
+
+import (
+	"fmt"
+	"reflect"
+	"strings"
+
+	"github.com/go-playground/validator/v10"
+	"gorm.io/gorm"
+)
+
+// ValidatorHelper struct untuk mengelola validator instance
+type ValidatorHelper struct {
+	validate *validator.Validate
+	db       *gorm.DB
+}
+
+// ValidationError struct untuk error response yang lebih terstruktur
+type ValidationError struct {
+	Field   string `json:"field"`
+	Tag     string `json:"tag"`
+	Value   string `json:"value"`
+	Message string `json:"message"`
+}
+
+// NewValidatorHelper membuat instance baru ValidatorHelper dengan GORM
+func NewValidatorHelper(db *gorm.DB) *ValidatorHelper {
+	validate := validator.New()
+	
+	vh := &ValidatorHelper{
+		validate: validate,
+		db:       db,
+	}
+	
+	// Register custom validator untuk unique
+	vh.registerUniqueValidator()
+	
+	// Register custom validator untuk exists
+	vh.registerExistsValidator()
+	
+	// Register custom tag name function untuk mendapatkan nama field dari JSON tag
+	vh.validate.RegisterTagNameFunc(func(fld reflect.StructField) string {
+		name := strings.SplitN(fld.Tag.Get("json"), ",", 2)[0]
+		if name == "-" {
+			return ""
+		}
+		return name
+	})
+	
+	return vh
+}
+
+// registerUniqueValidator mendaftarkan custom validator untuk unique value menggunakan GORM
+func (vh *ValidatorHelper) registerUniqueValidator() {
+	vh.validate.RegisterValidation("unique", func(fl validator.FieldLevel) bool {
+		// Parse parameter: unique=table:column
+		param := fl.Param()
+		parts := strings.Split(param, ":")
+		
+		if len(parts) < 2 {
+			return false
+		}
+		
+		table     := parts[0]
+		column    := parts[1]
+		value     := fl.Field().String()
+		fieldName := fl.FieldName()
+		
+		// Build GORM query untuk check unique
+		query := vh.db.Table(table).Where(fmt.Sprintf("%s = ?", column), value)
+		
+		// Check jika ada exclusion untuk field ini dari currentExclusions
+		if currentExclusions != nil {
+			if excludedID, exists := currentExclusions[fieldName]; exists && excludedID != "" {
+				query = query.Where("id != ?", excludedID)
+			}
+		}
+		
+		var count int64
+		err := query.Count(&count).Error
+		if err != nil {
+			return false
+		}
+		
+		return count == 0
+	})
+}
+
+// cek apakah data exists
+func (vh *ValidatorHelper) registerExistsValidator() {
+	vh.validate.RegisterValidation("exists", func(fl validator.FieldLevel) bool {
+		// Parse parameter: exists=table:column
+		param := fl.Param()
+		parts := strings.Split(param, ":")
+		
+		if len(parts) < 2 {
+			return false
+		}
+		
+		table := parts[0]
+		column := parts[1]
+		value := fl.Field().String()
+		
+		// Build GORM query untuk check exists
+		query := vh.db.Table(table).Where(fmt.Sprintf("%s = ?", column), value)
+		
+		var count int64
+		err := query.Count(&count).Error
+		if err != nil {
+			return false
+		}
+		
+		return count > 0
+	})
+}
+
+// ValidateStruct melakukan validasi terhadap struct (untuk create)
+func (vh *ValidatorHelper) ValidateStruct(s interface{}) []ValidationError {
+	return vh.ValidateStructWithExclusions(s, nil)
+}
+
+// ValidateForUpdate helper method untuk validasi update dengan excluded ID
+func (vh *ValidatorHelper) ValidateForUpdate(s interface{}, excludedID interface{}) []ValidationError {
+	exclusions := make(map[string]string)
+	excludedIDStr := fmt.Sprintf("%v", excludedID)
+	
+	// Gunakan reflection untuk mendapatkan semua field yang memiliki unique tag
+	structType := reflect.TypeOf(s)
+	if structType.Kind() == reflect.Ptr {
+		structType = structType.Elem()
+	}
+	
+	for i := 0; i < structType.NumField(); i++ {
+		field := structType.Field(i)
+		validateTag := field.Tag.Get("validate")
+		
+		// Check jika field memiliki unique validation
+		if strings.Contains(validateTag, "unique=") {
+			exclusions[field.Name] = excludedIDStr
+		}
+	}
+	
+	return vh.ValidateStructWithExclusions(s, exclusions)
+}
+
+// ValidateStructWithExclusions melakukan validasi dengan dynamic unique exclusions
+func (vh *ValidatorHelper) ValidateStructWithExclusions(s interface{}, exclusions map[string]string) []ValidationError {
+	var validationErrors []ValidationError
+	
+	// Set context exclusions untuk digunakan oleh unique validator
+	vh.setExclusions(exclusions)
+	
+	err := vh.validate.Struct(s)
+	if err != nil {
+		for _, err := range err.(validator.ValidationErrors) {
+			validationError := ValidationError{
+				Field:   err.Field(),
+				Tag:     err.Tag(),
+				Value:   fmt.Sprintf("%v", err.Value()),
+				Message: vh.getErrorMessage(err),
+			}
+			validationErrors = append(validationErrors, validationError)
+		}
+	}
+	
+	// Clear exclusions setelah validasi
+	vh.clearExclusions()
+	
+	return validationErrors
+}
+
+// exclusions map untuk menyimpan exclusions sementara
+var currentExclusions map[string]string
+
+// setExclusions menyimpan exclusions untuk digunakan validator
+func (vh *ValidatorHelper) setExclusions(exclusions map[string]string) {
+	currentExclusions = exclusions
+}
+
+// clearExclusions membersihkan exclusions setelah validasi
+func (vh *ValidatorHelper) clearExclusions() {
+	currentExclusions = nil
+}
+
+// ValidateVar melakukan validasi terhadap variable tunggal
+func (vh *ValidatorHelper) ValidateVar(field interface{}, tag string) error {
+	return vh.validate.Var(field, tag)
+}
+
+// getErrorMessage menggenerate pesan error yang user-friendly
+func (vh *ValidatorHelper) getErrorMessage(err validator.FieldError) string {
+	switch err.Tag() {
+	case "required":
+		return fmt.Sprintf("%s is required", err.Field())
+	case "email":
+		return fmt.Sprintf("%s must be a valid email address", err.Field())
+	case "min":
+		return fmt.Sprintf("%s must be at least %s characters long", err.Field(), err.Param())
+	case "max":
+		return fmt.Sprintf("%s must be at most %s characters long", err.Field(), err.Param())
+	case "len":
+		return fmt.Sprintf("%s must be exactly %s characters long", err.Field(), err.Param())
+	case "unique":
+		return fmt.Sprintf("%s already exists", err.Field())
+	case "exists":
+		return fmt.Sprintf("%s does not exist", err.Field())
+	case "oneof":
+		return fmt.Sprintf("%s must be one of: %s", err.Field(), err.Param())
+	case "url":
+		return fmt.Sprintf("%s must be a valid URL", err.Field())
+	case "numeric":
+		return fmt.Sprintf("%s must be numeric", err.Field())
+	case "alpha":
+		return fmt.Sprintf("%s must contain only letters", err.Field())
+	case "alphanum":
+		return fmt.Sprintf("%s must contain only letters and numbers", err.Field())
+	default:
+		return fmt.Sprintf("%s is invalid", err.Field())
+	}
+}
+
+// HasValidationErrors mengecek apakah ada validation errors
+func HasValidationErrors(errors []ValidationError) bool {
+	return len(errors) > 0
+}
+
+// FormatValidationErrors memformat validation errors menjadi map
+func FormatValidationErrors(errors []ValidationError) map[string]string {
+	result := make(map[string]string)
+	for _, err := range errors {
+		result[err.Field] = err.Message
+	}
+	return result
+}

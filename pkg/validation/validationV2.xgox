@@ -1,0 +1,281 @@
+package validation
+
+import (
+	"fmt"
+	"net/http"
+	"reflect"
+	"strconv"
+	"strings"
+
+	"github.com/go-playground/validator/v10"
+	"gorm.io/gorm"
+)
+
+type DetailedError struct {
+	Field   string      `json:"field"` // Field name (e.g., "customer_id", "order_details.quantity")
+	Tag     string      `json:"tag"`
+	Message string      `json:"message"`         // Human readable error message
+	Value   interface{} `json:"value,omitempty"` // The invalid value that caused the error
+	Index   *int        `json:"index,omitempty"` // Array index for detail items (0, 1, 2, etc.)
+}
+
+type ValidatorHelper struct {
+	validate *validator.Validate
+	db       *gorm.DB
+}
+
+func NewValidatorHelper(db *gorm.DB) *ValidatorHelper {
+	validate := validator.New()
+
+	vh := &ValidatorHelper{
+		validate: validate,
+		db:       db,
+	}
+
+	// Register custom validator untuk unique
+	vh.registerUniqueValidator()
+
+	// Register custom validator untuk exists
+	vh.registerExistsValidator()
+
+	// Register custom tag name function untuk mendapatkan nama field dari JSON tag
+	vh.validate.RegisterTagNameFunc(func(fld reflect.StructField) string {
+		name := strings.SplitN(fld.Tag.Get("json"), ",", 2)[0]
+		if name == "-" {
+			return ""
+		}
+		return name
+	})
+
+	return vh
+}
+
+// registerUniqueValidator mendaftarkan custom validator untuk unique value menggunakan GORM
+func (vh *ValidatorHelper) registerUniqueValidator() {
+	vh.validate.RegisterValidation("unique", func(fl validator.FieldLevel) bool {
+		// Parse parameter: unique=table:column
+		param := fl.Param()
+		parts := strings.Split(param, ":")
+
+		if len(parts) < 2 {
+			return false
+		}
+
+		table := parts[0]
+		column := parts[1]
+		value := fl.Field().String()
+		// fieldName := fl.FieldName()
+
+		// Build GORM query untuk check unique
+		query := vh.db.Table(table).Where(fmt.Sprintf("%s = ?", column), value)
+
+		// Check jika ada exclusion untuk field ini dari currentExclusions
+		if currentExclusions != nil {
+			// if excludedID, exists := currentExclusions[fieldName]; exists && excludedID != "" {
+			// 	query = query.Where("id != ?", excludedID)
+			// }
+			if excludedID, exists := currentExclusions["id"]; exists && excludedID != "" {
+				query = query.Where("id != ?", excludedID)
+			}
+		}
+
+		var count int64
+		err := query.Count(&count).Error
+		if err != nil {
+			return false
+		}
+
+		return count == 0
+	})
+}
+
+// cek apakah data exists
+func (vh *ValidatorHelper) registerExistsValidator() {
+	vh.validate.RegisterValidation("exists", func(fl validator.FieldLevel) bool {
+		// Parse parameter: exists=table:column
+		param := fl.Param()
+		parts := strings.Split(param, ":")
+
+		if len(parts) < 2 {
+			return false
+		}
+
+		table := parts[0]
+		column := parts[1]
+		value := fl.Field().String()
+
+		// Build GORM query untuk check exists
+		query := vh.db.Table(table).Where(fmt.Sprintf("%s = ?", column), value)
+
+		var count int64
+		err := query.Count(&count).Error
+		if err != nil {
+			return false
+		}
+
+		return count > 0
+	})
+}
+
+// exclusions map untuk menyimpan exclusions sementara
+var currentExclusions map[string]string
+
+// setExclusions menyimpan exclusions untuk digunakan validator
+func (vh *ValidatorHelper) setExclusions(exclusions map[string]string) {
+	currentExclusions = exclusions
+}
+
+// clearExclusions membersihkan exclusions setelah validasi
+func (vh *ValidatorHelper) clearExclusions() {
+	currentExclusions = nil
+}
+
+// ValidateStruct melakukan validasi terhadap struct (untuk create)
+func (vh *ValidatorHelper) ValidateStruct(s interface{}) []DetailedError {
+	return vh.ValidateRequestFormat(s, nil)
+}
+
+// ValidateForUpdate helper method untuk validasi update dengan excluded ID
+func (vh *ValidatorHelper) ValidateForUpdate(s interface{}, excludedID interface{}) []DetailedError {
+	exclusions := make(map[string]string)
+	excludedIDStr := fmt.Sprintf("%v", excludedID)
+
+	// Gunakan reflection untuk mendapatkan semua field yang memiliki unique tag
+	structType := reflect.TypeOf(s)
+	if structType.Kind() == reflect.Ptr {
+		structType = structType.Elem()
+	}
+
+	for i := 0; i < structType.NumField(); i++ {
+		field := structType.Field(i)
+		validateTag := field.Tag.Get("validate")
+
+		// Check jika field memiliki unique validation
+		if strings.Contains(validateTag, "unique=") {
+			exclusions[field.Name] = excludedIDStr
+		}
+	}
+
+	return vh.ValidateRequestFormat(s, exclusions)
+}
+
+/////
+
+func (vh *ValidatorHelper) ValidateRequestFormat(req interface{}, exclusions map[string]string) []DetailedError {
+	v := validator.New()
+	vh.registerUniqueValidator()
+	var errors []DetailedError
+
+	// Set context exclusions untuk digunakan oleh unique validator
+	vh.setExclusions(exclusions)
+
+	err := vh.validate.Struct(req)
+	if err != nil {
+		for _, validationErr := range err.(validator.ValidationErrors) {
+			detailedError := processValidationError(validationErr)
+			errors = append(errors, detailedError)
+		}
+	}
+
+	// Clear exclusions setelah validasi
+	vh.clearExclusions()
+
+	return errors
+}
+
+// Process validation errors from validator package
+func processValidationError(err validator.FieldError) DetailedError {
+
+	namespace := err.Namespace()
+	value := err.Value()
+
+	// Extract array index if exists
+	arrayIndex := extractArrayIndex(namespace)
+
+	// Convert field name to JSON format
+	// fieldName := convertFieldName(err.Field(), arrayIndex)
+
+	// Generate human-readable message
+	message := generateErrorMessage(err.Field(), err.Tag(), err.Param())
+
+	return DetailedError{
+		Field:   err.Field(),
+		Tag:     err.Tag(),
+		Message: message,
+		Value:   value,
+		Index:   arrayIndex,
+	}
+}
+
+// Extract array index from namespace (e.g., "OrderDetails[1]" -> 1)
+func extractArrayIndex(namespace string) *int {
+	if !strings.Contains(namespace, "[") || !strings.Contains(namespace, "]") {
+		return nil
+	}
+
+	start := strings.Index(namespace, "[")
+	end := strings.Index(namespace, "]")
+
+	if start == -1 || end == -1 || end <= start {
+		return nil
+	}
+
+	indexStr := namespace[start+1 : end]
+	if index, err := strconv.Atoi(indexStr); err == nil {
+		return &index
+	}
+
+	return nil
+}
+
+var tagMessages = map[string]string{
+	"required": "%s is required",
+	"email":    "%s must be a valid email address",
+	"unique":   "%s already exists",
+	"exists":   "%s does not exist",
+	"min":      "%s must be at least %s characters long",
+	"max":      "%s must be at most %s characters long",
+	"gt":       "%s must be greater than %s",
+	"gte":      "%s must be greater than or equal to %s",
+	"oneof":    "%s must be one of: %s",
+	"dive":     "Invalid data in %s",
+}
+
+func generateErrorMessage(fieldName, tag, param string) string {
+	if tmpl, ok := tagMessages[tag]; ok {
+		return fmt.Sprintf(tmpl, fieldName, param)
+	}
+	return fmt.Sprintf("%s is invalid", fieldName)
+}
+
+// HasValidationErrors mengecek apakah ada validation errors
+func HasValidationErrors(errors []DetailedError) bool {
+	return len(errors) > 0
+}
+
+// FormatValidationErrors memformat validation errors menjadi map
+func FormatValidationErrors(errors []DetailedError) map[string]string {
+	result := make(map[string]string)
+	for _, err := range errors {
+		result[err.Field] = err.Message
+	}
+	return result
+}
+
+// Response Error
+type ResponseError struct {
+	Code       string          `json:"code"`
+	Message    string          `json:"message"`
+	StatusCode int             `json:"status_code"`
+	Errors     []DetailedError `json:"errors"`
+	Err        error           `json:"-"`
+}
+
+func ErrorValidation(errors []DetailedError) *ResponseError {
+	return &ResponseError{
+		Code:       "BAD_REQUEST",
+		Message:    "Validation failed",
+		StatusCode: http.StatusUnprocessableEntity,
+		Errors:     errors,
+	}
+}
