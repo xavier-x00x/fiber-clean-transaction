@@ -48,7 +48,10 @@ func (h *StoreHandler) GetAllFilter(c *fiber.Ctx) error {
 
 func (h *StoreHandler) GetStore(c *fiber.Ctx) error {
 
-	id, _ := strconv.Atoi(c.Params("id"))
+	id, errx := strconv.Atoi(c.Params("id"))
+	if errx != nil {
+		return ResponseError(c, utils.BadRequest("Invalid store ID"))
+	}
 
 	data, err := h.StoreUsecase.FindById(uint(id))
 	if err != nil {

@@ -46,7 +46,10 @@ func (h *CategoryHandler) GetAllFilter(c *fiber.Ctx) error {
 }
 
 func (h *CategoryHandler) GetCategory(c *fiber.Ctx) error {
-	id, _ := strconv.Atoi(c.Params("id"))
+	id, errx := strconv.Atoi(c.Params("id"))
+	if errx != nil {
+		return ResponseError(c, utils.BadRequest("Invalid category ID"))
+	}
 
 	data, err := h.CategoryUsecase.FindById(c.UserContext(), uint(id))
 	if err != nil {
@@ -89,7 +92,10 @@ func (h *CategoryHandler) CreateCategory(c *fiber.Ctx) error {
 }
 
 func (h *CategoryHandler) UpdateCategory(c *fiber.Ctx) error {
-	id, _ := strconv.Atoi(c.Params("id"))
+	id, errx := strconv.Atoi(c.Params("id"))
+	if errx != nil {
+		return ResponseError(c, utils.BadRequest("Invalid category ID"))
+	}
 
 	categoryRequest := new(dto.CategoryRequest)
 	if err := c.BodyParser(categoryRequest); err != nil {
@@ -110,7 +116,10 @@ func (h *CategoryHandler) UpdateCategory(c *fiber.Ctx) error {
 }
 
 func (h *CategoryHandler) DeleteCategory(c *fiber.Ctx) error {
-	id, _ := strconv.Atoi(c.Params("id"))
+	id, errx := strconv.Atoi(c.Params("id"))
+	if errx != nil {
+		return ResponseError(c, utils.BadRequest("Invalid category ID"))
+	}
 
 	err := h.CategoryUsecase.Delete(c.UserContext(), uint(id))
 	if err != nil {

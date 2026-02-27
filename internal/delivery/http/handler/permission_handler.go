@@ -48,7 +48,10 @@ func (h *PermissionHandler) GetAllFilter(c *fiber.Ctx) error {
 
 func (h *PermissionHandler) GetPermission(c *fiber.Ctx) error {
 
-	id, _ := strconv.Atoi(c.Params("id"))
+	id, errx := strconv.Atoi(c.Params("id"))
+	if errx != nil {
+		return ResponseError(c, utils.BadRequest("Invalid permission ID"))
+	}
 
 	data, err := h.PermissionUsecase.FindById(c.UserContext(), uint(id))
 	if err != nil {
