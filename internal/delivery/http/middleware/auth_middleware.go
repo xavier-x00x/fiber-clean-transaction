@@ -26,7 +26,7 @@ func AuthMiddleware(c *fiber.Ctx) error {
 
 	// Ambil token setelah "Bearer "
 	tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
-	println(tokenStr)
+	// println(tokenStr)
 
 	claims, err := jwtutil.ValidateJWT(tokenStr)
 	if err != nil {

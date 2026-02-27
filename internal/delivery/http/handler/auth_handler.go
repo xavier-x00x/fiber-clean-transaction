@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -71,15 +72,24 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	}
 
 	// Access token
-	access, _ := jwtutil.GenerateJWT(&usrJwt, 15) // 15 minutes
+	// access, _ := jwtutil.GenerateJWT(&usrJwt, 15) // 15 minutes
+	access, err := jwtutil.GenerateJWT(&usrJwt, 15) // 15 minutes
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to generate access token"})
+	}
 	// Refresh token
-	refresh, _ := jwtutil.GenerateJWT(&usrJwt, 60*24*30*6) // 6 months
+	// refresh, _ := jwtutil.GenerateJWT(&usrJwt, 60*24*30*6) // 6 months
+	refresh, err := jwtutil.GenerateJWT(&usrJwt, 60*24*30*6) // 6 months
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to generate refresh token"})
+	}
 
 	cookie := fiber.Cookie{
 		Name:     "refresh_token",
 		Value:    refresh,
 		HTTPOnly: true,
-		Secure:   false,
+		// Secure:   false,
+		Secure:   getCookieSecureFlag(),
 		SameSite: "Lax",
 	}
 
@@ -109,7 +119,11 @@ func (h *AuthHandler) Refresh(c *fiber.Ctx) error {
 		})
 	}
 
-	access, _ := jwtutil.GenerateJWT(claims, 15) // 15 minutes
+	// access, _ := jwtutil.GenerateJWT(claims, 15) // 15 minutes
+	access, err := jwtutil.GenerateJWT(claims, 15) // 15 minutes
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to generate access token"})
+	}
 	return c.JSON(fiber.Map{
 		"access_token": access,
 	})
@@ -127,7 +141,7 @@ func (h *AuthHandler) Profile(c *fiber.Ctx) error {
 	userClaims := contextkeys.GetUser(c)
 	user_id := userClaims.ID
 
-	println(user_id)
+	// println(user_id)
 
 	user, _ := h.usecase.Profile(user_id)
 
@@ -249,7 +263,7 @@ func (h *AuthHandler) GoogleAuth(c *fiber.Ctx) error {
 	}
 
 	UpdatedAt := time.Time(user.UpdatedAt)
-	// Jika user terakhir update lebih dari 1 jam sebelumnya, ambil gambar
+	// Jika data sudah pernah login dalam 1 jam terakhir, ambil gambar dari Google
 	if time.Since(UpdatedAt) < time.Hour {
 		// ambil gambar
 		if userg.Picture != "" {
@@ -264,15 +278,24 @@ func (h *AuthHandler) GoogleAuth(c *fiber.Ctx) error {
 	}
 
 	// Access token
-	access, _ := jwtutil.GenerateJWT(&usrJwt, 15) // 15 minutes
+	// access, _ := jwtutil.GenerateJWT(&usrJwt, 15) // 15 minutes
+	access, err := jwtutil.GenerateJWT(&usrJwt, 15) // 15 minutes
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to generate access token"})
+	}
 	// Refresh token
-	refresh, _ := jwtutil.GenerateJWT(&usrJwt, 60*24*30*6) // 6 months
+	// refresh, _ := jwtutil.GenerateJWT(&usrJwt, 60*24*30*6) // 6 months
+	refresh, err := jwtutil.GenerateJWT(&usrJwt, 60*24*30*6) // 6 months
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to generate refresh token"})
+	}
 
 	cookie := fiber.Cookie{
 		Name:     "refresh_token",
 		Value:    refresh,
 		HTTPOnly: true,
-		Secure:   false,
+		// Secure:   false,
+		Secure:   getCookieSecureFlag(),
 		SameSite: "Lax",
 	}
 
@@ -301,4 +324,18 @@ func (h *AuthHandler) getPicture(userId uint, id string, pic string) (string, er
 		h.usecase.UpdateAvatar(userId, avatar)
 	}
 	return string(avatar), err
+}
+
+func getCookieSecureFlag() bool {
+	secureFlag := os.Getenv("COOKIE_SECURE")
+	if secureFlag == "" {
+		return false
+	}
+
+	isSecure, err := strconv.ParseBool(secureFlag)
+	if err != nil {
+		return false
+	}
+
+	return isSecure
 }
