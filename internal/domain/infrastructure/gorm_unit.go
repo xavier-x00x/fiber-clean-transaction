@@ -4,9 +4,6 @@ import (
 	"context"
 	"fiber-clean-transaction/internal/domain/entity"
 	"fiber-clean-transaction/internal/domain/repository"
-	"fmt"
-	"math"
-	"strings"
 
 	"gorm.io/gorm"
 )
@@ -20,72 +17,13 @@ func NewUnitRepository(db *gorm.DB) repository.UnitRepository {
 }
 
 func (r *UnitGormRepo) GetAllFilter(ctx context.Context, filter entity.QueryFilter) ([]entity.Unit, *entity.Meta, error) {
-
-	page := filter.Page
-	limit := filter.Limit
-	search := filter.Search
-	orderBy := fmt.Sprintf("%s %s", filter.OrderColumn, strings.ToUpper(filter.OrderDir))
-	searchColumn := filter.SearchColumn
-
-	var dataList []entity.Unit
-	var total, totalFiltered int64
-
-	// dataList & totalfilter
-	query := r.db.Model(&entity.Unit{})
-
-	// apply conditions
-	if filter.Conditions != nil {
-		for key, val := range filter.Conditions {
-			query = query.Where(fmt.Sprintf("%s = ?", key), val)
-		}
-	}
-
-	if search != "" {
-		var conditions []string
-		var values []interface{}
-
-		for _, column := range searchColumn {
-			conditions = append(conditions, fmt.Sprintf("%s LIKE ?", column))
-			values = append(values, "%"+search+"%")
-		}
-
-		// gabungkan pakai OR
-		query = query.Where("("+strings.Join(conditions, " OR ")+")", values...)
-	}
-
-	query.Count(&totalFiltered)
-
-	query.Offset((page - 1) * limit).Limit(limit).Order(orderBy).Find(&dataList)
-
-	if len(dataList) == 0 {
-		dataList = []entity.Unit{}
-	}
-
-	// count total
-	qry := r.db.Model(&entity.Unit{})
-	if filter.Conditions != nil {
-		for key, val := range filter.Conditions {
-			qry = qry.Where(fmt.Sprintf("%s = ?", key), val)
-		}
-	}
-	qry.Count(&total)
-
-	// meta
-	meta := &entity.Meta{
-		Page:          page,
-		Limit:         limit,
-		Total:         int(total),
-		TotalFiltered: int(totalFiltered),
-		LastPage:      int(math.Ceil(float64(totalFiltered) / float64(limit))),
-		Draw:          len(dataList),
-	}
-
-	return dataList, meta, nil
+	baseQuery := r.db.Model(&entity.Unit{})
+	return PaginateAndFilter[entity.Unit](r.db, baseQuery, filter)
 }
 
-func (r *UnitGormRepo) FindById(ctx context.Context, id uint) (*entity.Unit, error) {
+func (r *UnitGormRepo) FindByID(ctx context.Context, ID uint) (*entity.Unit, error) {
 	var unit entity.Unit
-	err := r.db.Where("id = ?", id).Take(&unit).Error
+	err := r.db.Where("id = ?", ID).Take(&unit).Error
 	return &unit, err
 }
 
@@ -96,19 +34,16 @@ func (r *UnitGormRepo) FindByCode(ctx context.Context, code string) (*entity.Uni
 }
 
 func (r *UnitGormRepo) Create(ctx context.Context, unit *entity.Unit) error {
-	// Type assertion untuk mengkonversi abstraksi ke implementasi konkret
 	gormTx := GetDBWithTx(ctx, r.db)
 	return gormTx.WithContext(ctx).Create(unit).Error
 }
 
-func (r *UnitGormRepo) Update(ctx context.Context, id uint, unit *entity.Unit) error {
-	// Type assertion untuk mengkonversi abstraksi ke implementasi konkret
+func (r *UnitGormRepo) Update(ctx context.Context, ID uint, unit *entity.Unit) error {
 	gormTx := GetDBWithTx(ctx, r.db)
-	return gormTx.WithContext(ctx).Model(&entity.Unit{}).Where("id = ?", id).Updates(unit).Error
+	return gormTx.WithContext(ctx).Model(&entity.Unit{}).Where("id = ?", ID).Updates(unit).Error
 }
 
-func (r *UnitGormRepo) Delete(ctx context.Context, id uint) error {
-	// Type assertion untuk mengkonversi abstraksi ke implementasi konkret
+func (r *UnitGormRepo) Delete(ctx context.Context, ID uint) error {
 	gormTx := GetDBWithTx(ctx, r.db)
-	return gormTx.WithContext(ctx).Delete(&entity.Unit{}, id).Error
+	return gormTx.WithContext(ctx).Delete(&entity.Unit{}, ID).Error
 }

@@ -20,16 +20,16 @@ Content-Type: application/json
 
 ### Get Profile
 GET http://localhost:3050/api/auth/profile
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NzE4MTY4MTIsImlkIjoxLCJyb2xlIjoiIn0.V9d7oMw0lQoqFDW223zrlZh6YS1BveRV4bawnZMpYpo
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImR3aUBleGFtcGxlLmNvbSIsImV4cCI6MTc3MjMxNDU4MiwiaWQiOjEsInJvbGUiOiIiLCJzdG9yZSI6IiJ9.-PiIoxdFqIRo5RvMEZ0ghAzxdNeSOmx4BOqeaGgrQG4
 
 
 ### Create Store
 POST http://localhost:3050/api/stores
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NzE4MTY4MTIsImlkIjoxLCJyb2xlIjoiIn0.V9d7oMw0lQoqFDW223zrlZh6YS1BveRV4bawnZMpYpo
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImR3aUBleGFtcGxlLmNvbSIsImV4cCI6MTc3MjMxNDU4MiwiaWQiOjEsInJvbGUiOiIiLCJzdG9yZSI6IiJ9.-PiIoxdFqIRo5RvMEZ0ghAzxdNeSOmx4BOqeaGgrQG4
 Content-Type: application/json
 
 {
-  "code": "store-002",
-  "name": "Store 002",
-  "email": "store002@example.com"
+  "code": "store-001",
+  "name": "Store 003",
+  "email": "store003@example.com"
 }

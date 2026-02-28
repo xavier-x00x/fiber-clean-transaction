@@ -48,12 +48,12 @@ func (h *PermissionHandler) GetAllFilter(c *fiber.Ctx) error {
 
 func (h *PermissionHandler) GetPermission(c *fiber.Ctx) error {
 
-	id, errx := strconv.Atoi(c.Params("id"))
+	ID, errx := strconv.Atoi(c.Params("id"))
 	if errx != nil {
 		return ResponseError(c, utils.BadRequest("Invalid permission ID"))
 	}
 
-	data, err := h.PermissionUsecase.FindById(c.UserContext(), uint(id))
+	data, err := h.PermissionUsecase.FindByID(c.UserContext(), uint(ID))
 	if err != nil {
 		return ResponseError(c, err)
 	}
@@ -96,7 +96,10 @@ func (h *PermissionHandler) CreatePermission(c *fiber.Ctx) error {
 
 func (h *PermissionHandler) UpdatePermission(c *fiber.Ctx) error {
 
-	id, _ := c.ParamsInt("id")
+	ID, errx := c.ParamsInt("id")
+	if errx != nil {
+		return ResponseError(c, utils.BadRequest("Invalid permission ID"))
+	}
 
 	permissionRequest := new(dto.PermissionRequest)
 
@@ -105,7 +108,7 @@ func (h *PermissionHandler) UpdatePermission(c *fiber.Ctx) error {
 		return ResponseError(c, errx)
 	}
 
-	err := h.PermissionUsecase.Update(c.UserContext(), uint(id), permissionRequest)
+	err := h.PermissionUsecase.Update(c.UserContext(), uint(ID), permissionRequest)
 
 	if err != nil {
 		return ResponseError(c, err)
@@ -120,9 +123,12 @@ func (h *PermissionHandler) UpdatePermission(c *fiber.Ctx) error {
 
 func (h *PermissionHandler) DeletePermission(c *fiber.Ctx) error {
 
-	id, _ := c.ParamsInt("id")
+	ID, errx := c.ParamsInt("id")
+	if errx != nil {
+		return ResponseError(c, utils.BadRequest("Invalid permission ID"))
+	}
 
-	err := h.PermissionUsecase.Delete(c.UserContext(), uint(id))
+	err := h.PermissionUsecase.Delete(c.UserContext(), uint(ID))
 
 	if err != nil {
 		return ResponseError(c, err)

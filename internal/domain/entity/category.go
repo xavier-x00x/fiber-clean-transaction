@@ -1,7 +1,7 @@
 package entity
 
 type Category struct {
-	Id          uint   `gorm:"primarykey"`
+	ID          uint   `gorm:"primarykey"`
 	StoreCode   string `gorm:"size:30;not null"`
 	Code        string `gorm:"size:30;unique;not null"`
 	Name        string `gorm:"size:250;not null"`

@@ -9,17 +9,18 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-type CategoryHandler struct {
-	CategoryUsecase *usecase.CategoryUsecase
+type RoleHandler struct {
+	RoleUsecase *usecase.RoleUsecase
 }
 
-func NewCategoryHandler(uc *usecase.CategoryUsecase) *CategoryHandler {
-	return &CategoryHandler{
-		CategoryUsecase: uc,
+func NewRoleHandler(u *usecase.RoleUsecase) *RoleHandler {
+	return &RoleHandler{
+		RoleUsecase: u,
 	}
 }
 
-func (h *CategoryHandler) GetAllFilter(c *fiber.Ctx) error {
+func (h *RoleHandler) GetAllFilter(c *fiber.Ctx) error {
+
 	page, _ := strconv.Atoi(c.Query("page", "1"))
 	limit, _ := strconv.Atoi(c.Query("limit", "10"))
 
@@ -31,7 +32,7 @@ func (h *CategoryHandler) GetAllFilter(c *fiber.Ctx) error {
 		OrderDir:    c.Query("order_dir", "asc"),
 	}
 
-	data, meta, err := h.CategoryUsecase.GetAllFilter(c.UserContext(), metaRequest)
+	data, meta, err := h.RoleUsecase.GetAllFilter(c.UserContext(), metaRequest)
 	if err != nil {
 		return ResponseError(c, err)
 	}
@@ -45,22 +46,21 @@ func (h *CategoryHandler) GetAllFilter(c *fiber.Ctx) error {
 	})
 }
 
-func (h *CategoryHandler) GetCategory(c *fiber.Ctx) error {
-	ID, errx := strconv.Atoi(c.Params("ID"))
+func (h *RoleHandler) GetRole(c *fiber.Ctx) error {
+
+	ID, errx := strconv.Atoi(c.Params("id"))
 	if errx != nil {
-		return ResponseError(c, utils.BadRequest("Invalid category ID"))
+		return ResponseError(c, utils.BadRequest("Invalid role ID"))
 	}
 
-	data, err := h.CategoryUsecase.FindByID(c.UserContext(), uint(ID))
+	data, err := h.RoleUsecase.FindByID(c.UserContext(), uint(ID))
 	if err != nil {
 		return ResponseError(c, err)
 	}
 
-	category := &dto.CategoryResponse{
-		ID:        data.ID,
-		Code:      data.Code,
+	role := &dto.RoleResponse{
+		ID:        int(data.ID),
 		Name:      data.Name,
-		Status:    data.Status,
 		UpdatedAt: data.UpdatedAt,
 	}
 
@@ -68,18 +68,20 @@ func (h *CategoryHandler) GetCategory(c *fiber.Ctx) error {
 		"success": true,
 		"status":  fiber.StatusOK,
 		"message": "Success",
-		"data":    category,
+		"data":    role,
 	})
 }
 
-func (h *CategoryHandler) CreateCategory(c *fiber.Ctx) error {
-	categoryRequest := new(dto.CategoryRequest)
-	if err := c.BodyParser(categoryRequest); err != nil {
+func (h *RoleHandler) CreateRole(c *fiber.Ctx) error {
+
+	roleRequest := new(dto.RoleRequest)
+
+	if err := c.BodyParser(&roleRequest); err != nil {
 		error := utils.BadRequest(err.Error())
 		return ResponseError(c, error)
 	}
 
-	err := h.CategoryUsecase.Create(c.UserContext(), categoryRequest)
+	err := h.RoleUsecase.Create(c.UserContext(), roleRequest)
 	if err != nil {
 		return ResponseError(c, err)
 	}
@@ -91,19 +93,22 @@ func (h *CategoryHandler) CreateCategory(c *fiber.Ctx) error {
 	})
 }
 
-func (h *CategoryHandler) UpdateCategory(c *fiber.Ctx) error {
-	ID, errx := strconv.Atoi(c.Params("id"))
+func (h *RoleHandler) UpdateRole(c *fiber.Ctx) error {
+
+	ID, errx := c.ParamsInt("id")
 	if errx != nil {
-		return ResponseError(c, utils.BadRequest("Invalid category ID"))
+		return ResponseError(c, utils.BadRequest("Invalid role ID"))
 	}
 
-	categoryRequest := new(dto.CategoryRequest)
-	if err := c.BodyParser(categoryRequest); err != nil {
-		error := utils.BadRequest(err.Error())
-		return ResponseError(c, error)
+	roleRequest := new(dto.RoleRequest)
+
+	if err := c.BodyParser(&roleRequest); err != nil {
+		errx := utils.BadRequest(err.Error())
+		return ResponseError(c, errx)
 	}
 
-	err := h.CategoryUsecase.Update(c.UserContext(), uint(ID), categoryRequest)
+	err := h.RoleUsecase.Update(c.UserContext(), uint(ID), roleRequest)
+
 	if err != nil {
 		return ResponseError(c, err)
 	}
@@ -115,13 +120,15 @@ func (h *CategoryHandler) UpdateCategory(c *fiber.Ctx) error {
 	})
 }
 
-func (h *CategoryHandler) DeleteCategory(c *fiber.Ctx) error {
-	ID, errx := strconv.Atoi(c.Params("id"))
+func (h *RoleHandler) DeleteRole(c *fiber.Ctx) error {
+
+	ID, errx := c.ParamsInt("id")
 	if errx != nil {
-		return ResponseError(c, utils.BadRequest("Invalid category ID"))
+		return ResponseError(c, utils.BadRequest("Invalid role ID"))
 	}
 
-	err := h.CategoryUsecase.Delete(c.UserContext(), uint(ID))
+	err := h.RoleUsecase.Delete(c.UserContext(), uint(ID))
+
 	if err != nil {
 		return ResponseError(c, err)
 	}

@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fiber-clean-transaction/internal/contextkeys"
 	"fiber-clean-transaction/internal/dto"
@@ -62,24 +64,20 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": "Invalid email or password",
 		})
-		// return c.Status(401).JSON(fiber.Map{"error": err.Error()})
 	}
 
 	usrJwt := dto.UserJwt{
-		ID:    user.Id,
+		ID:    user.ID,
 		Email: user.Email,
 		Role:  user.Role,
 	}
 
-	// Access token
-	// access, _ := jwtutil.GenerateJWT(&usrJwt, 15) // 15 minutes
-	access, err := jwtutil.GenerateJWT(&usrJwt, 15) // 15 minutes
+	access, err := jwtutil.GenerateJWT(&usrJwt, 15)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to generate access token"})
 	}
-	// Refresh token
-	// refresh, _ := jwtutil.GenerateJWT(&usrJwt, 60*24*30*6) // 6 months
-	refresh, err := jwtutil.GenerateJWT(&usrJwt, 60*24*30*6) // 6 months
+
+	refresh, err := jwtutil.GenerateJWT(&usrJwt, 60*24*30*6)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to generate refresh token"})
 	}
@@ -88,7 +86,6 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 		Name:     "refresh_token",
 		Value:    refresh,
 		HTTPOnly: true,
-		// Secure:   false,
 		Secure:   getCookieSecureFlag(),
 		SameSite: "Lax",
 	}
@@ -119,8 +116,7 @@ func (h *AuthHandler) Refresh(c *fiber.Ctx) error {
 		})
 	}
 
-	// access, _ := jwtutil.GenerateJWT(claims, 15) // 15 minutes
-	access, err := jwtutil.GenerateJWT(claims, 15) // 15 minutes
+	access, err := jwtutil.GenerateJWT(claims, 15)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to generate access token"})
 	}
@@ -137,16 +133,20 @@ func (h *AuthHandler) Logout(c *fiber.Ctx) error {
 }
 
 func (h *AuthHandler) Profile(c *fiber.Ctx) error {
-	// get context user id
-	userClaims := contextkeys.GetUser(c)
-	user_id := userClaims.ID
+	userClaims := contextkeys.GetUserC(c.UserContext())
+	if userClaims == nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
 
-	// println(user_id)
-
-	user, _ := h.usecase.Profile(user_id)
+	user, err := h.usecase.Profile(userClaims.ID)
+	if err != nil {
+		return ResponseError(c, err)
+	}
 
 	usrResponse := dto.UserResponse{
-		ID:        user.Id,
+		ID:        user.ID,
 		Name:      user.Name,
 		Email:     user.Email,
 		Role:      user.Role,
@@ -172,30 +172,17 @@ func (h *AuthHandler) GoogleRegister(c *fiber.Ctx) error {
 		})
 	}
 
-	// Panggil Google Userinfo API
-	userInfoURL := "https://www.googleapis.com/oauth2/v2/userinfo"
-	reqAPI, _ := http.NewRequest("GET", userInfoURL, nil)
-	reqAPI.Header.Set("Authorization", "Bearer "+req.AccessToken)
-
-	client := &http.Client{}
-	resp, err := client.Do(reqAPI)
+	userg, err := fetchGoogleUserInfo(req.AccessToken)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to fetch user info",
-		})
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return c.Status(resp.StatusCode).JSON(fiber.Map{
-			"error": fmt.Sprintf("Google API error: %s", resp.Status),
+			"error": err.Error(),
 		})
 	}
 
-	var userg dto.GoogleUser
-	if err := json.NewDecoder(resp.Body).Decode(&userg); err != nil {
+	randomPass, err := generateRandomPassword(32)
+	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to parse user info",
+			"error": "Failed to generate secure password",
 		})
 	}
 
@@ -203,11 +190,11 @@ func (h *AuthHandler) GoogleRegister(c *fiber.Ctx) error {
 		Name:     userg.Name,
 		Username: userg.Email,
 		Email:    userg.Email,
-		Password: "password",
+		Password: randomPass,
 	}
 
 	if err := h.usecase.Register(userRequest); err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+		return ResponseError(c, err)
 	}
 
 	return c.JSON(fiber.Map{"message": "user registered"})
@@ -227,35 +214,14 @@ func (h *AuthHandler) GoogleAuth(c *fiber.Ctx) error {
 		})
 	}
 
-	// Panggil Google Userinfo API
-	userInfoURL := "https://www.googleapis.com/oauth2/v2/userinfo"
-	reqAPI, _ := http.NewRequest("GET", userInfoURL, nil)
-	reqAPI.Header.Set("Authorization", "Bearer "+req.AccessToken)
-
-	client := &http.Client{}
-	resp, err := client.Do(reqAPI)
+	userg, err := fetchGoogleUserInfo(req.AccessToken)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to fetch user info",
-		})
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return c.Status(resp.StatusCode).JSON(fiber.Map{
-			"error": fmt.Sprintf("Google API error: %s", resp.Status),
-		})
-	}
-
-	var userg dto.GoogleUser
-	if err := json.NewDecoder(resp.Body).Decode(&userg); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to parse user info",
+			"error": err.Error(),
 		})
 	}
 
 	user, err := h.usecase.GoogleProfile(userg.Email)
-
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": "Email not registered",
@@ -263,29 +229,24 @@ func (h *AuthHandler) GoogleAuth(c *fiber.Ctx) error {
 	}
 
 	UpdatedAt := time.Time(user.UpdatedAt)
-	// Jika data sudah pernah login dalam 1 jam terakhir, ambil gambar dari Google
 	if time.Since(UpdatedAt) < time.Hour {
-		// ambil gambar
 		if userg.Picture != "" {
-			h.getPicture(user.Id, userg.ID, userg.Picture)
+			h.getPicture(user.ID, userg.ID, userg.Picture)
 		}
 	}
 
 	usrJwt := dto.UserJwt{
-		ID:    user.Id,
+		ID:    user.ID,
 		Email: user.Email,
 		Role:  user.Role,
 	}
 
-	// Access token
-	// access, _ := jwtutil.GenerateJWT(&usrJwt, 15) // 15 minutes
-	access, err := jwtutil.GenerateJWT(&usrJwt, 15) // 15 minutes
+	access, err := jwtutil.GenerateJWT(&usrJwt, 15)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to generate access token"})
 	}
-	// Refresh token
-	// refresh, _ := jwtutil.GenerateJWT(&usrJwt, 60*24*30*6) // 6 months
-	refresh, err := jwtutil.GenerateJWT(&usrJwt, 60*24*30*6) // 6 months
+
+	refresh, err := jwtutil.GenerateJWT(&usrJwt, 60*24*30*6)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to generate refresh token"})
 	}
@@ -294,13 +255,12 @@ func (h *AuthHandler) GoogleAuth(c *fiber.Ctx) error {
 		Name:     "refresh_token",
 		Value:    refresh,
 		HTTPOnly: true,
-		// Secure:   false,
 		Secure:   getCookieSecureFlag(),
 		SameSite: "Lax",
 	}
 
 	if req.RememberMe {
-		cookie.Expires = time.Now().Add(time.Hour * 24 * 30 * 6) // 6 months
+		cookie.Expires = time.Now().Add(time.Hour * 24 * 30 * 6)
 	}
 
 	c.Cookie(&cookie)
@@ -310,20 +270,59 @@ func (h *AuthHandler) GoogleAuth(c *fiber.Ctx) error {
 	})
 }
 
-func (h *AuthHandler) getPicture(userId uint, id string, pic string) (string, error) {
-	var avatar string
-	respPic, err := http.Get(pic)
-	if err == nil {
-		defer respPic.Body.Close()
-		fileName := fmt.Sprintf("uploads/%s.jpg", id)
-		out, _ := os.Create(fileName)
-		defer out.Close()
+// --- Helper Functions ---
 
-		io.Copy(out, respPic.Body)
-		avatar = fileName // ganti dengan path lokal
-		h.usecase.UpdateAvatar(userId, avatar)
+func fetchGoogleUserInfo(accessToken string) (*dto.GoogleUser, error) {
+	userInfoURL := "https://www.googleapis.com/oauth2/v2/userinfo"
+	reqAPI, err := http.NewRequest("GET", userInfoURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
-	return string(avatar), err
+	reqAPI.Header.Set("Authorization", "Bearer "+accessToken)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(reqAPI)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch user info")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("Google API error: %s", resp.Status)
+	}
+
+	var userg dto.GoogleUser
+	if err := json.NewDecoder(resp.Body).Decode(&userg); err != nil {
+		return nil, fmt.Errorf("failed to parse user info")
+	}
+
+	return &userg, nil
+}
+
+func generateRandomPassword(length int) (string, error) {
+	bytes := make([]byte, length)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(bytes), nil
+}
+
+func (h *AuthHandler) getPicture(userID uint, ID string, pic string) {
+	respPic, err := http.Get(pic)
+	if err != nil {
+		return
+	}
+	defer respPic.Body.Close()
+
+	fileName := fmt.Sprintf("uploads/%s.jpg", ID)
+	out, err := os.Create(fileName)
+	if err != nil {
+		return
+	}
+	defer out.Close()
+
+	io.Copy(out, respPic.Body)
+	h.usecase.UpdateAvatar(userID, fileName)
 }
 
 func getCookieSecureFlag() bool {

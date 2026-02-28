@@ -49,14 +49,14 @@ func (u *UserUsecase) Login(email, password string) (*entity.User, error) {
 	return user, nil
 }
 
-func (u *UserUsecase) Profile(id uint) (*entity.User, error) {
-	return u.repo.FindById(id)
+func (u *UserUsecase) Profile(ID uint) (*entity.User, error) {
+	return u.repo.FindByID(ID)
 }
 
 func (u *UserUsecase) GoogleProfile(email string) (*entity.User, error) {
 	return u.repo.FindByEmail(email)
 }
 
-func (u *UserUsecase) UpdateAvatar(id uint, avatar string) error {
-	return u.repo.UpdateAvatar(id, avatar)
+func (u *UserUsecase) UpdateAvatar(ID uint, avatar string) error {
+	return u.repo.UpdateAvatar(ID, avatar)
 }

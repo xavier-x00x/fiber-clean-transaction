@@ -25,26 +25,10 @@ func NewUnitUsecase(r repository.UnitRepository, uow transaction.UnitOfWork, v *
 }
 
 func (u *UnitUsecase) GetAllFilter(ctx context.Context, meta *dto.MetaRequest) ([]entity.Unit, *entity.Meta, error) {
-	// validasi order by untuk hindari SQL injection
-	direction := []string{"asc", "desc"}
-	order := []string{"id", "code", "name", "updated_at"}
-	searchColumn := []string{"id", "code", "name"}
+	allowedOrder := []string{"id", "code", "name", "updated_at"}
+	searchColumns := []string{"id", "code", "name"}
 
-	if !utils.Contains(order, meta.OrderColumn) || !utils.Contains(direction, meta.OrderDir) {
-		meta.OrderColumn = "id"
-		meta.OrderDir = "asc"
-	}
-
-	filter := entity.QueryFilter{
-		Page:         meta.Page,
-		Limit:        meta.Limit,
-		Search:       meta.Search,
-		OrderColumn:  meta.OrderColumn,
-		OrderDir:     meta.OrderDir,
-		SearchColumn: searchColumn,
-		Conditions:   map[string]interface{}{},
-	}
-
+	filter := BuildQueryFilter(meta, allowedOrder, searchColumns)
 	filter.Conditions["status"] = 1
 
 	data, resMeta, err := u.repo.GetAllFilter(ctx, filter)
@@ -54,8 +38,8 @@ func (u *UnitUsecase) GetAllFilter(ctx context.Context, meta *dto.MetaRequest) (
 	return data, resMeta, nil
 }
 
-func (u *UnitUsecase) FindById(ctx context.Context, id uint) (*entity.Unit, error) {
-	data, err := u.repo.FindById(ctx, id)
+func (u *UnitUsecase) FindByID(ctx context.Context, ID uint) (*entity.Unit, error) {
+	data, err := u.repo.FindByID(ctx, ID)
 	if err != nil {
 		return nil, utils.NotFound(err.Error())
 	}

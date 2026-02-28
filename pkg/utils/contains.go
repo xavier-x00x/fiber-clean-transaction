@@ -1,8 +1,10 @@
 package utils
 
-import "sort"
-
 func Contains(s []string, str string) bool {
-	sort.Strings(s)
-	return sort.SearchStrings(s, str) != len(s)
+	for _, v := range s {
+		if v == str {
+			return true
+		}
+	}
+	return false
 }

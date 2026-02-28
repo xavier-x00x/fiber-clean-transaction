@@ -1,7 +1,7 @@
 package entity
 
 type Tax struct {
-	Id      uint    `json:"id" gorm:"primarykey"`
+	ID      uint    `json:"id" gorm:"primarykey"`
 	Code    string  `gorm:"size:30;unique;not null"`
 	Name    string  `gorm:"size:250;not null"`
 	Percent float64 `gorm:"type:decimal(5,2);not null"`

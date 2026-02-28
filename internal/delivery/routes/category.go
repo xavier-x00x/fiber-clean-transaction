@@ -29,7 +29,7 @@ func (r *CategoryRoutes) RegisterRoutes(c RouteContainer) {
 	// Setup API group
 	api := c.App.Group("/api")
 
-	category := api.Group("/categories")
+	category := api.Group("/categories", c.AuthMiddleware)
 	category.Get("/", r.handler.GetAllFilter)
 	category.Get("/:id", r.handler.GetCategory)
 	category.Post("/", r.handler.CreateCategory)

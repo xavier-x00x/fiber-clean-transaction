@@ -25,26 +25,10 @@ func NewCategoryUsecase(r repository.CategoryRepository, uow transaction.UnitOfW
 }
 
 func (u *CategoryUsecase) GetAllFilter(ctx context.Context, meta *dto.MetaRequest) ([]entity.Category, *entity.Meta, error) {
-	// validasi order by untuk hindari SQL injection
-	direction := []string{"asc", "desc"}
-	order := []string{"id", "code", "name", "updated_at"}
-	searchColumn := []string{"id", "code", "name"}
+	allowedOrder := []string{"id", "code", "name", "updated_at"}
+	searchColumns := []string{"id", "code", "name"}
 
-	if !utils.Contains(order, meta.OrderColumn) || !utils.Contains(direction, meta.OrderDir) {
-		meta.OrderColumn = "id"
-		meta.OrderDir = "asc"
-	}
-
-	filter := entity.QueryFilter{
-		Page:         meta.Page,
-		Limit:        meta.Limit,
-		Search:       meta.Search,
-		OrderColumn:  meta.OrderColumn,
-		OrderDir:     meta.OrderDir,
-		SearchColumn: searchColumn,
-		Conditions:   map[string]interface{}{},
-	}
-
+	filter := BuildQueryFilter(meta, allowedOrder, searchColumns)
 	filter.Conditions["status"] = 1
 
 	data, resMeta, err := u.repo.GetAllFilter(ctx, filter)
@@ -54,8 +38,8 @@ func (u *CategoryUsecase) GetAllFilter(ctx context.Context, meta *dto.MetaReques
 	return data, resMeta, nil
 }
 
-func (u *CategoryUsecase) FindById(ctx context.Context, id uint) (*entity.Category, error) {
-	data, err := u.repo.FindById(ctx, id)
+func (u *CategoryUsecase) FindByID(ctx context.Context, ID uint) (*entity.Category, error) {
+	data, err := u.repo.FindByID(ctx, ID)
 	if err != nil {
 		return nil, utils.NotFound(err.Error())
 	}
@@ -95,16 +79,16 @@ func (u *CategoryUsecase) Create(ctx context.Context, request *dto.CategoryReque
 	})
 }
 
-func (u *CategoryUsecase) Update(ctx context.Context, id uint, request *dto.CategoryRequest) error {
+func (u *CategoryUsecase) Update(ctx context.Context, ID uint, request *dto.CategoryRequest) error {
 	// ✅ Validasi SEBELUM transaksi
-	if err := u.validator.ValidateUpdate(request, id); err != nil {
+	if err := u.validator.ValidateUpdate(request, ID); err != nil {
 		return err
 	}
 	// ✅ UseCase tidak tahu tentang GORM, hanya menggunakan abstraksi
 	return u.uow.Do(ctx, func(ctx context.Context) error {
 
 		// cek apakah data ada
-		if _, err := u.repo.FindById(ctx, id); err != nil {
+		if _, err := u.repo.FindByID(ctx, ID); err != nil {
 			return utils.NotFound(err.Error())
 		}
 
@@ -116,7 +100,7 @@ func (u *CategoryUsecase) Update(ctx context.Context, id uint, request *dto.Cate
 			Status:      request.Status,
 		}
 
-		if err := u.repo.Update(ctx, id, category); err != nil {
+		if err := u.repo.Update(ctx, ID, category); err != nil {
 			return utils.Internal(err.Error(), err)
 		}
 		// lakukan logika lain ...
@@ -125,17 +109,17 @@ func (u *CategoryUsecase) Update(ctx context.Context, id uint, request *dto.Cate
 	})
 }
 
-func (u *CategoryUsecase) Delete(ctx context.Context, id uint) error {
+func (u *CategoryUsecase) Delete(ctx context.Context, ID uint) error {
 	// ✅ UseCase tidak tahu tentang GORM, hanya menggunakan abstraksi
 	return u.uow.Do(ctx, func(ctx context.Context) error {
 
 		// cek apakah data ada
-		if _, err := u.repo.FindById(ctx, id); err != nil {
+		if _, err := u.repo.FindByID(ctx, ID); err != nil {
 			return utils.NotFound(err.Error())
 		}
 
 		// hapus data
-		if err := u.repo.Delete(ctx, id); err != nil {
+		if err := u.repo.Delete(ctx, ID); err != nil {
 			return utils.Internal(err.Error(), err)
 		}
 

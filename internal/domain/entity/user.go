@@ -3,7 +3,7 @@ package entity
 import "fiber-clean-transaction/pkg/utils"
 
 type User struct {
-	Id        uint           `json:"id"`
+	ID        uint           `json:"id"`
 	Name      string         `json:"name"`
 	Username  string         `json:"username"`
 	Email     string         `json:"email"`

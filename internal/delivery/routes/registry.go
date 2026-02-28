@@ -48,5 +48,6 @@ func init() {
 	RegisterModule(&AuthRoutes{})
 	RegisterModule(&StoreRoutes{})
 	RegisterModule(&CategoryRoutes{})
-	// New modules just add themselves here - NO OTHER FILE NEEDS TO CHANGE!
+	RegisterModule(&PermissionRoutes{})
+	RegisterModule(&RoleRoutes{})
 }

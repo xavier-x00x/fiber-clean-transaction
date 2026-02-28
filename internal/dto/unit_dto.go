@@ -9,7 +9,7 @@ type UnitRequest struct {
 }
 
 type UnitResponse struct {
-	Id        uint       `json:"id"`
+	ID        uint       `json:"id"`
 	Code      string     `json:"code"`
 	Name      string     `json:"name"`
 	Status    *bool      `json:"status"`
