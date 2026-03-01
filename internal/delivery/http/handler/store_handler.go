@@ -50,7 +50,7 @@ func (h *StoreHandler) GetStore(c *fiber.Ctx) error {
 
 	ID, errx := strconv.Atoi(c.Params("id"))
 	if errx != nil {
-		return ResponseError(c, utils.BadRequest("Invalid store ID"))
+		return ResponseError(c, utils.BadRequest("Invalid store id"))
 	}
 
 	data, err := h.StoreUsecase.FindByID(uint(ID))
@@ -104,7 +104,7 @@ func (h *StoreHandler) UpdateStore(c *fiber.Ctx) error {
 
 	ID, errx := c.ParamsInt("id")
 	if errx != nil {
-		return ResponseError(c, utils.BadRequest("Invalid store ID"))
+		return ResponseError(c, utils.BadRequest("Invalid store id"))
 	}
 
 	storeRequest := new(dto.StoreRequest)
@@ -131,7 +131,7 @@ func (h *StoreHandler) DeleteStore(c *fiber.Ctx) error {
 
 	ID, errx := c.ParamsInt("id")
 	if errx != nil {
-		return ResponseError(c, utils.BadRequest("Invalid store ID"))
+		return ResponseError(c, utils.BadRequest("Invalid store id"))
 	}
 
 	err := h.StoreUsecase.Delete(c.UserContext(), uint(ID))
