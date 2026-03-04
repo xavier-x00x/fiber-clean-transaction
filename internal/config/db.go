@@ -37,6 +37,7 @@ func ConnectDatabase() {
 		&entity.Permission{},
 		&entity.Role{},
 		&entity.RolePermission{},
+		&entity.NumberSequence{},
 	)
 	log.Println("✅ Database migrated")
 }

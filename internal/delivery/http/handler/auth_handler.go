@@ -151,7 +151,7 @@ func (h *AuthHandler) Profile(c *fiber.Ctx) error {
 		Email:     user.Email,
 		Role:      user.Role,
 		Avatar:    user.Avatar,
-		UpdatedAt: user.UpdatedAt,
+		UpdatedAt: *user.UpdatedAt,
 	}
 
 	return c.JSON(usrResponse)
@@ -228,7 +228,7 @@ func (h *AuthHandler) GoogleAuth(c *fiber.Ctx) error {
 		})
 	}
 
-	UpdatedAt := time.Time(user.UpdatedAt)
+	UpdatedAt := *user.UpdatedAt
 	if time.Since(UpdatedAt) < time.Hour {
 		if userg.Picture != "" {
 			h.getPicture(user.ID, userg.ID, userg.Picture)

@@ -6,19 +6,22 @@ import (
 	"fiber-clean-transaction/internal/domain/repository"
 	"fiber-clean-transaction/internal/dto"
 	"fiber-clean-transaction/internal/transaction"
+	"fiber-clean-transaction/pkg/docnumber"
 	"fiber-clean-transaction/pkg/utils"
 	"fiber-clean-transaction/pkg/validation"
 )
 
 type UnitUsecase struct {
-	repo      repository.UnitRepository
-	uow       transaction.UnitOfWork
 	validator *validation.ValidatorHelper
+	uow       transaction.UnitOfWork
+	repo      repository.UnitRepository
+	seqRepo   repository.NumberSequenceRepository
 }
 
-func NewUnitUsecase(r repository.UnitRepository, uow transaction.UnitOfWork, v *validation.ValidatorHelper) *UnitUsecase {
+func NewUnitUsecase(r repository.UnitRepository, seqRepo repository.NumberSequenceRepository, uow transaction.UnitOfWork, v *validation.ValidatorHelper) *UnitUsecase {
 	return &UnitUsecase{
 		repo:      r,
+		seqRepo:   seqRepo,
 		uow:       uow,
 		validator: v,
 	}
@@ -62,8 +65,14 @@ func (u *UnitUsecase) Create(ctx context.Context, request *dto.UnitRequest) erro
 	// ✅ UseCase tidak tahu tentang GORM, hanya menggunakan abstraksi
 	return u.uow.Do(ctx, func(ctx context.Context) error {
 
+		// Generate document number
+		code, err := docnumber.GenerateDocNumber(ctx, u.seqRepo, "UNIT")
+		if err != nil {
+			return utils.Internal(err.Error(), err)
+		}
+
 		unit := &entity.Unit{
-			Code:   request.Code,
+			Code:   code,
 			Name:   request.Name,
 			Status: request.Status,
 		}

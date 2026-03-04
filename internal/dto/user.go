@@ -2,7 +2,6 @@ package dto
 
 import (
 	"encoding/json"
-	"fiber-clean-transaction/pkg/utils"
 	"fmt"
 	"os"
 	"time"
@@ -18,13 +17,14 @@ type UserRequest struct {
 }
 
 type UserResponse struct {
-	ID        uint           `json:"id"`
-	Name      string         `json:"name"`
-	Username  string         `json:"username"`
-	Email     string         `json:"email"`
-	Role      string         `json:"role"`
-	Avatar    string         `json:"avatar"`
-	UpdatedAt utils.JSONTime `json:"updated_at"`
+	ID        uint      `json:"id"`
+	Name      string    `json:"name"`
+	Username  string    `json:"username"`
+	Email     string    `json:"email"`
+	Role      string    `json:"role"`
+	Avatar    string    `json:"avatar"`
+	UpdatedAt time.Time `gorm:"autoUpdateTime" json:"updated_at"`
+	// UpdatedAt utils.JSONTime `json:"updated_at"`
 }
 
 func (UserResponse) TableName() string {

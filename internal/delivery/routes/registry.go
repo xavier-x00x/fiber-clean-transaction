@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"fiber-clean-transaction/internal/domain/repository"
 	"log"
 
 	"github.com/gofiber/fiber/v2"
@@ -9,7 +10,8 @@ import (
 
 // Container interface for dependency injection
 type HandlerContainer struct {
-	DB *gorm.DB
+	DB      *gorm.DB
+	SeqRepo repository.NumberSequenceRepository
 }
 
 type RouteContainer struct {

@@ -3,6 +3,7 @@ package config
 import (
 	"fiber-clean-transaction/internal/delivery/http/middleware"
 	"fiber-clean-transaction/internal/delivery/routes"
+	"fiber-clean-transaction/internal/domain/infrastructure"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -16,9 +17,13 @@ type BootstrapConfig struct {
 
 func Bootstrap(conf *BootstrapConfig) {
 
+	// Global repositories
+	seqRepo := infrastructure.NewNumberSequenceRepository(conf.DB)
+
 	// Create container
 	handlerContainer := &routes.HandlerContainer{
-		DB: conf.DB,
+		DB:      conf.DB,
+		SeqRepo: seqRepo,
 	}
 
 	routeContainer := &routes.RouteContainer{

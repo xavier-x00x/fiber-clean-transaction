@@ -1,0 +1,33 @@
+sources:
+  my-mysql-source:
+    kind: mysql
+    host: 127.0.0.1
+    port: 3306
+    database: go_trial
+    user: noto
+    password: "1"
+
+tools:
+  show-tables:
+    kind: mysql-sql
+    source: my-mysql-source
+    description: "Show all tables in the database"
+    statement: "SHOW TABLES"
+  describe-table:
+    kind: mysql-sql
+    source: my-mysql-source
+    description: "Describe the structure of a specific table"
+    statement: "DESCRIBE {{.table_name}}"
+    templateParameters:
+      - name: table_name
+        type: string
+        description: "Name of the table to describe"
+  select-all:
+    kind: mysql-sql
+    source: my-mysql-source
+    description: "Select all rows from a specific table"
+    statement: "SELECT * FROM {{.table_name}}"
+    templateParameters:
+      - name: table_name
+        type: string
+        description: "Name of the table to select from"
