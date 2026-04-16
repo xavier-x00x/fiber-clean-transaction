@@ -33,6 +33,12 @@ func (r *PermissionGormRepo) FindByCode(ctx context.Context, code string) (*enti
 	return &data, err
 }
 
+func (r *PermissionGormRepo) FindByName(name string) (*entity.Permission, error) {
+	var data entity.Permission
+	err := r.db.Where("name = ?", name).Take(&data).Error
+	return &data, err
+}
+
 func (r *PermissionGormRepo) Create(ctx context.Context, permission *entity.Permission) error {
 	gormTx := GetDBWithTx(ctx, r.db)
 	return gormTx.WithContext(ctx).Create(permission).Error
@@ -46,4 +52,10 @@ func (r *PermissionGormRepo) Update(ctx context.Context, ID uint, permission *en
 func (r *PermissionGormRepo) Delete(ctx context.Context, ID uint) error {
 	gormTx := GetDBWithTx(ctx, r.db)
 	return gormTx.WithContext(ctx).Delete(&entity.Permission{}, ID).Error
+}
+
+func (r *PermissionGormRepo) GetAllPermissions(ctx context.Context) ([]entity.Permission, error) {
+	var permissions []entity.Permission
+	err := r.db.Find(&permissions).Error
+	return permissions, err
 }

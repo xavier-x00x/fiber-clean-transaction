@@ -72,7 +72,7 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 		Role:  user.Role,
 	}
 
-	access, err := jwtutil.GenerateJWT(&usrJwt, 15)
+	access, err := jwtutil.GenerateJWT(&usrJwt, 30)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to generate access token"})
 	}
@@ -83,7 +83,7 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	}
 
 	cookie := fiber.Cookie{
-		Name:     "refresh_token",
+		Name:     "REFRESH_TOKEN",
 		Value:    refresh,
 		HTTPOnly: true,
 		Secure:   getCookieSecureFlag(),
@@ -102,7 +102,7 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 }
 
 func (h *AuthHandler) Refresh(c *fiber.Ctx) error {
-	refreshToken := c.Cookies("refresh_token")
+	refreshToken := c.Cookies("REFRESH_TOKEN")
 	if refreshToken == "" {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": "Missing refresh token",
@@ -116,7 +116,7 @@ func (h *AuthHandler) Refresh(c *fiber.Ctx) error {
 		})
 	}
 
-	access, err := jwtutil.GenerateJWT(claims, 15)
+	access, err := jwtutil.GenerateJWT(claims, 30)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to generate access token"})
 	}
@@ -126,7 +126,14 @@ func (h *AuthHandler) Refresh(c *fiber.Ctx) error {
 }
 
 func (h *AuthHandler) Logout(c *fiber.Ctx) error {
-	c.ClearCookie("refresh_token")
+	c.Cookie(&fiber.Cookie{
+		Name:     "REFRESH_TOKEN",
+		Value:    "",
+		HTTPOnly: true,
+		Secure:   getCookieSecureFlag(),
+		SameSite: "Lax",
+		Expires:  time.Unix(0, 0),
+	})
 	return c.JSON(fiber.Map{
 		"message": "Logout success",
 	})
@@ -252,7 +259,7 @@ func (h *AuthHandler) GoogleAuth(c *fiber.Ctx) error {
 	}
 
 	cookie := fiber.Cookie{
-		Name:     "refresh_token",
+		Name:     "REFRESH_TOKEN",
 		Value:    refresh,
 		HTTPOnly: true,
 		Secure:   getCookieSecureFlag(),

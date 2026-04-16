@@ -8,6 +8,7 @@ import (
 	"fiber-clean-transaction/internal/transaction"
 	"fiber-clean-transaction/pkg/utils"
 	"fiber-clean-transaction/pkg/validation"
+	"strings"
 )
 
 type PermissionUsecase struct {
@@ -94,20 +95,41 @@ func (u *PermissionUsecase) Update(ctx context.Context, ID uint, request *dto.Pe
 }
 
 func (u *PermissionUsecase) SyncPermissions(ctx context.Context, permissions []*dto.PermissionRequest) error {
+	// ✅ Validate all permissions before transaction
+	for _, perm := range permissions {
+		if err := u.validator.Validate(perm); err != nil {
+			return err
+		}
+	}
+
 	// ✅ UseCase tidak tahu tentang GORM, hanya menggunakan abstraksi
 	return u.uow.Do(ctx, func(ctx context.Context) error {
 
 		for _, perm := range permissions {
 			existingPerm, err := u.repo.FindByCode(ctx, perm.Path)
-			if err != nil {
-				return utils.Internal(err.Error(), err)
+
+			// skip bila ada character "2" di path (contoh: /api/v2/resource)
+			if strings.Contains(perm.Path, "2") {
+				continue
 			}
-			if existingPerm == nil {
+
+			// Check if permission doesn't exist
+			if existingPerm.ID == 0 || (err != nil && err.Error() == "record not found") {
+				// Create new permission
 				newPerm := &entity.Permission{
 					Path: perm.Path,
 					Name: perm.Name,
 				}
 				if err := u.repo.Create(ctx, newPerm); err != nil {
+					return utils.Internal(err.Error(), err)
+				}
+			} else {
+				// Update existing permission
+				updateData := &entity.Permission{
+					Path: perm.Path,
+					Name: perm.Name,
+				}
+				if err := u.repo.Update(ctx, existingPerm.ID, updateData); err != nil {
 					return utils.Internal(err.Error(), err)
 				}
 			}

@@ -4,6 +4,7 @@ import (
 	"fiber-clean-transaction/internal/domain/entity"
 	"fmt"
 	"log"
+	"time"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -20,7 +21,12 @@ func ConnectDatabase() {
 		ConfigApp.DBName,
 	)
 
-	database, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	database, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
+		NowFunc: func() time.Time {
+			return time.Now().UTC()
+		},
+	})
+
 	if err != nil {
 		log.Fatal("Failed to connect to database: ", err)
 	}
@@ -38,6 +44,8 @@ func ConnectDatabase() {
 		&entity.Role{},
 		&entity.RolePermission{},
 		&entity.NumberSequence{},
+		&entity.NuxtMenu{},
+		&entity.Product{},
 	)
 	log.Println("✅ Database migrated")
 }

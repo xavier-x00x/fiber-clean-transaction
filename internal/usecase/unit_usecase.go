@@ -85,3 +85,47 @@ func (u *UnitUsecase) Create(ctx context.Context, request *dto.UnitRequest) erro
 		return nil // berhasil di commit
 	})
 }
+
+func (u *UnitUsecase) Update(ctx context.Context, ID uint, request *dto.UnitRequest) error {
+	// ✅ Validasi SEBELUM transaksi
+	if err := u.validator.ValidateUpdate(request, ID); err != nil {
+		return err
+	}
+	// ✅ UseCase tidak tahu tentang GORM, hanya menggunakan abstraksi
+	return u.uow.Do(ctx, func(ctx context.Context) error {
+
+		// cek apakah data ada
+		if _, err := u.repo.FindByID(ctx, ID); err != nil {
+			return utils.NotFound(err.Error())
+		}
+
+		unit := &entity.Unit{
+			Name:   request.Name,
+			Status: request.Status,
+		}
+
+		if err := u.repo.Update(ctx, ID, unit); err != nil {
+			return utils.Internal(err.Error(), err)
+		}
+
+		return nil // berhasil di commit
+	})
+}
+
+func (u *UnitUsecase) Delete(ctx context.Context, ID uint) error {
+	// ✅ UseCase tidak tahu tentang GORM, hanya menggunakan abstraksi
+	return u.uow.Do(ctx, func(ctx context.Context) error {
+
+		// cek apakah data ada
+		if _, err := u.repo.FindByID(ctx, ID); err != nil {
+			return utils.NotFound(err.Error())
+		}
+
+		// hapus data
+		if err := u.repo.Delete(ctx, ID); err != nil {
+			return utils.Internal(err.Error(), err)
+		}
+
+		return nil // berhasil di commit
+	})
+}

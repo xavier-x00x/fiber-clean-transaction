@@ -2,6 +2,8 @@ package routes
 
 import (
 	"fiber-clean-transaction/internal/domain/repository"
+	"fiber-clean-transaction/internal/transaction"
+	"fiber-clean-transaction/pkg/validation"
 	"log"
 
 	"github.com/gofiber/fiber/v2"
@@ -10,8 +12,10 @@ import (
 
 // Container interface for dependency injection
 type HandlerContainer struct {
-	DB      *gorm.DB
-	SeqRepo repository.NumberSequenceRepository
+	DB         *gorm.DB
+	SeqRepo    repository.NumberSequenceRepository
+	Validator  *validation.ValidatorHelper
+	UnitOfWork *transaction.GormUnitOfWork
 }
 
 type RouteContainer struct {
@@ -52,4 +56,6 @@ func init() {
 	RegisterModule(&CategoryRoutes{})
 	RegisterModule(&PermissionRoutes{})
 	RegisterModule(&RoleRoutes{})
+	RegisterModule(&UserRoutes{})
+	RegisterModule(&UnitRoutes{})
 }

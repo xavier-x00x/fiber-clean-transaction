@@ -1,9 +1,12 @@
 package handler
 
 import (
+	"fiber-clean-transaction/internal/contextkeys"
+	"fiber-clean-transaction/internal/domain/entity"
 	"fiber-clean-transaction/internal/dto"
 	"fiber-clean-transaction/internal/usecase"
 	"fiber-clean-transaction/pkg/utils"
+	"log"
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
@@ -59,8 +62,16 @@ func (h *RoleHandler) GetRole(c *fiber.Ctx) error {
 	}
 
 	role := &dto.RoleResponse{
-		ID:        int(data.ID),
-		Name:      data.Name,
+		ID:   int(data.ID),
+		Name: data.Name,
+		Permissions: func(perms []entity.Permission) []string {
+			codes := make([]string, len(perms))
+			for i, perm := range perms {
+				codes[i] = perm.Name
+			}
+			return codes
+		}(data.Permissions),
+		CreatedAt: data.CreatedAt,
 		UpdatedAt: data.UpdatedAt,
 	}
 
@@ -137,5 +148,77 @@ func (h *RoleHandler) DeleteRole(c *fiber.Ctx) error {
 		"success": true,
 		"status":  fiber.StatusOK,
 		"message": "Data deleted successfully",
+	})
+}
+
+func (h *RoleHandler) Authorization(c *fiber.Ctx) error {
+	type Request struct {
+		Path string `json:"path"`
+	}
+
+	userClaims := contextkeys.GetUserC(c.UserContext())
+	log.Printf("xxx : %v", userClaims.Role)
+	if userClaims == nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
+
+	var req Request
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid request body",
+		})
+	}
+
+	if req.Path == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Missing path",
+		})
+	}
+
+	println(req.Path)
+	access, err := h.RoleUsecase.Authorization(userClaims.Role, req.Path)
+
+	if err != nil {
+		return ResponseError(c, err)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"success": true,
+		"status":  fiber.StatusOK,
+		"message": "Success",
+		"data":    access,
+	})
+
+}
+
+func (h *RoleHandler) GetPermissionsByRole(c *fiber.Ctx) error {
+
+	userClaims := contextkeys.GetUserC(c.UserContext())
+	if userClaims == nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
+
+	roleName := userClaims.Role
+	if roleName == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Missing role name",
+		})
+	}
+	println(roleName)
+	permissions, err := h.RoleUsecase.GetPermissionsByRole(c.UserContext(), roleName)
+
+	if err != nil {
+		return ResponseError(c, err)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"success": true,
+		"status":  fiber.StatusOK,
+		"message": "Success",
+		"data":    permissions,
 	})
 }

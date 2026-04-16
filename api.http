@@ -14,18 +14,18 @@ POST http://localhost:3050/api/auth/login
 Content-Type: application/json
 
 {
-  "email"       : "dwi@example.com",
+  "email"       : "noto@dev.com",
   "password"    : "1"
 }
 
 ### Get Profile
 GET http://localhost:3050/api/auth/profile
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImR3aUBleGFtcGxlLmNvbSIsImV4cCI6MTc3MjYzMzczMiwiaWQiOjEsInJvbGUiOiIiLCJzdG9yZSI6IiJ9.xN2J7Z6j2wh-X_tYfYqlBXlPqFkdjO7Z8hPCMwJi1iY
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6Im5vdG9AZGV2LmNvbSIsImV4cCI6MTc3NTQ3NDE5OCwiaWQiOjQsInJvbGUiOiJwcm9ncmFtbWVyIiwic3RvcmUiOiIifQ.vtxDr2ryrGTpqxFdw5UGD-GJAZtiNC0CkM9CEOQdWxw
 
 
 ### Create Store
 POST http://localhost:3050/api/stores
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImR3aUBleGFtcGxlLmNvbSIsImV4cCI6MTc3MjYzMzczMiwiaWQiOjEsInJvbGUiOiIiLCJzdG9yZSI6IiJ9.xN2J7Z6j2wh-X_tYfYqlBXlPqFkdjO7Z8hPCMwJi1iY
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImR3aUBleGFtcGxlLmNvbSIsImV4cCI6MTc3NTM5NDI1MywiaWQiOjMsInJvbGUiOiIiLCJzdG9yZSI6IiJ9.7LjMk2mpbcuvrfgZ9B7SlzLDiiPFSu-xeuVDet_DZzU
 Content-Type: application/json
 
 {
@@ -33,3 +33,27 @@ Content-Type: application/json
   "name": "Store 099",
   "email": "store099@example.com"
 }
+
+
+### Check Role
+POST http://localhost:3050/api/roles/authorization
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6Im5vdG9AZGV2LmNvbSIsImV4cCI6MTc3NTQ3NDE5OCwiaWQiOjQsInJvbGUiOiJwcm9ncmFtbWVyIiwic3RvcmUiOiIifQ.vtxDr2ryrGTpqxFdw5UGD-GJAZtiNC0CkM9CEOQdWxw
+Content-Type: application/json
+
+{
+  "path": "/"
+}
+
+### Check Role
+POST http://localhost:3050/api/auth/refresh
+Content-Type: application/json
+
+### Get Permissions
+GET http://localhost:3050/api/permissions
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6Im5vdG9AZGV2LmNvbSIsImV4cCI6MTc3NTQ5NDE4OCwiaWQiOjQsInJvbGUiOiJwcm9ncmFtbWVyIiwic3RvcmUiOiIifQ.H9wjJdi-vWu4i-27MQqQf5git-_qXBnnESFM1xJXOIU
+
+### Get Stores
+GET http://localhost:3050/api/stores
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6Im5vdG9AZGV2LmNvbSIsImV4cCI6MTc3NTgwNDY2OCwiaWQiOjQsInJvbGUiOiJwcm9ncmFtbWVyIiwic3RvcmUiOiIifQ.fz0pTEsoFZR8vRQuAlNVS-sJ7tHCXdrdJXUSWgfdPKs
+
+

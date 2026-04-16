@@ -3,9 +3,7 @@ package routes
 import (
 	"fiber-clean-transaction/internal/delivery/http/handler"
 	"fiber-clean-transaction/internal/domain/infrastructure"
-	"fiber-clean-transaction/internal/transaction"
 	"fiber-clean-transaction/internal/usecase"
-	"fiber-clean-transaction/pkg/validation"
 )
 
 type RoleRoutes struct {
@@ -19,10 +17,12 @@ func (r *RoleRoutes) GetModuleName() string {
 
 // RegisterHandler initializes the handler and its dependencies
 func (r *RoleRoutes) RegisterHandler(c HandlerContainer) {
-	uow := transaction.NewGormUnitOfWork(c.DB)
-	validator := validation.NewValidatorHelper(c.DB)
-	repo := infrastructure.NewRoleRepository(c.DB)
-	roleUsecase := usecase.NewRoleUsecase(repo, uow, validator)
+	roleUsecase := usecase.NewRoleUsecase(usecase.RoleUsecaseDeps{
+		Validator: c.Validator,
+		UOW:       c.UnitOfWork,
+		RoleRepo:  infrastructure.NewRoleRepository(c.DB),
+		PermRepo:  infrastructure.NewPermissionRepository(c.DB),
+	})
 	r.handler = handler.NewRoleHandler(roleUsecase)
 }
 
@@ -32,8 +32,10 @@ func (r *RoleRoutes) RegisterRoutes(c RouteContainer) {
 
 	role := api.Group("/roles", c.AuthMiddleware)
 	role.Get("/", r.handler.GetAllFilter)
+	role.Get("/permissions", r.handler.GetPermissionsByRole)
 	role.Get("/:id", r.handler.GetRole)
 	role.Post("/", r.handler.CreateRole)
+	role.Post("/authorization", r.handler.Authorization)
 	role.Put("/:id", r.handler.UpdateRole)
 	role.Delete("/:id", r.handler.DeleteRole)
 }

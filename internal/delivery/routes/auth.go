@@ -14,10 +14,10 @@ func (r *AuthRoutes) GetModuleName() string {
 	return "auth"
 }
 
-func (r *AuthRoutes) RegisterHandler(container HandlerContainer) {
+func (r *AuthRoutes) RegisterHandler(c HandlerContainer) {
 	// Initialize dependencies khusus untuk route ini
-	repo := infrastructure.NewUserRepository(container.DB)
-	uc := usecase.NewUserUsecase(repo)
+	repo := infrastructure.NewUserRepository(c.DB)
+	uc := usecase.NewUserUsecase(repo, c.Validator, c.UnitOfWork)
 	r.handler = handler.NewAuthHandler(uc)
 }
 

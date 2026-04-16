@@ -24,7 +24,7 @@ func (r *RoleGormRepo) GetAllFilter(ctx context.Context, filter entity.QueryFilt
 func (r *RoleGormRepo) FindByID(ctx context.Context, ID uint) (*entity.Role, error) {
 	var data entity.Role
 	gormTx := GetDBWithTx(ctx, r.db)
-	err := gormTx.Where("id = ?", ID).Take(&data).Error
+	err := gormTx.Preload("Permissions").Where("id = ?", ID).Take(&data).Error
 	return &data, err
 }
 
@@ -41,7 +41,8 @@ func (r *RoleGormRepo) Create(ctx context.Context, data *entity.Role) error {
 
 func (r *RoleGormRepo) Update(ctx context.Context, ID uint, data *entity.Role) error {
 	gormTx := GetDBWithTx(ctx, r.db)
-	return gormTx.WithContext(ctx).Model(&entity.Role{}).Where("id = ?", ID).Updates(data).Error
+	data.ID = ID
+	return gormTx.WithContext(ctx).Updates(data).Error
 }
 
 func (r *RoleGormRepo) AssignPermission(ctx context.Context, role *entity.Role, permissions []entity.Permission) error {
@@ -57,4 +58,19 @@ func (r *RoleGormRepo) Delete(ctx context.Context, ID uint) error {
 func (r *RoleGormRepo) ClearPermissions(ctx context.Context, role *entity.Role) error {
 	gormTx := GetDBWithTx(ctx, r.db)
 	return gormTx.WithContext(ctx).Model(role).Association("Permissions").Clear()
+}
+
+func (r *RoleGormRepo) AccessPermission(role_name string, permission_name string) (*entity.Role, error) {
+	var role entity.Role
+	err := r.db.Preload("Permissions", "name = ?", permission_name).Where("name = ?", role_name).Take(&role).Error
+	return &role, err
+}
+
+func (r *RoleGormRepo) GetPermissionsByRole(ctx context.Context, roleName string) ([]entity.Permission, error) {
+	var role entity.Role
+	err := r.db.Preload("Permissions").Where("name = ?", roleName).Take(&role).Error
+	if err != nil {
+		return nil, err
+	}
+	return role.Permissions, nil
 }

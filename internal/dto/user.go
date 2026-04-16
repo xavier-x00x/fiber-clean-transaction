@@ -12,6 +12,17 @@ type UserRequest struct {
 	Email     string    `validate:"required,email,unique=users:email" json:"email"`
 	Username  string    `validate:"required,unique=users:username" json:"username"`
 	Password  string    `validate:"required" json:"password"`
+	Role      string    `validate:"required,exists=roles:name" json:"role"`
+	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt time.Time `gorm:"autoUpdateTime" json:"updated_at"`
+}
+
+type UserUpdateRequest struct {
+	Name      string    `validate:"required,min=3" json:"name"`
+	Email     string    `validate:"required,email,unique=users:email" json:"email"`
+	Username  string    `validate:"required,unique=users:username" json:"username"`
+	Password  string    `json:"password"`
+	Role      string    `validate:"required,exists=roles:name" json:"role"`
 	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
 	UpdatedAt time.Time `gorm:"autoUpdateTime" json:"updated_at"`
 }

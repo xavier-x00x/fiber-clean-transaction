@@ -3,9 +3,7 @@ package routes
 import (
 	"fiber-clean-transaction/internal/delivery/http/handler"
 	"fiber-clean-transaction/internal/domain/infrastructure"
-	"fiber-clean-transaction/internal/transaction"
 	"fiber-clean-transaction/internal/usecase"
-	"fiber-clean-transaction/pkg/validation"
 )
 
 type StoreRoutes struct {
@@ -18,10 +16,8 @@ func (r *StoreRoutes) GetModuleName() string {
 
 func (r *StoreRoutes) RegisterHandler(c HandlerContainer) {
 	// Initialize dependencies khusus untuk route ini
-	tr := transaction.NewGormUnitOfWork(c.DB)
-	vh := validation.NewValidatorHelper(c.DB)
 	rp := infrastructure.NewStoreRepository(c.DB)
-	uc := usecase.NewStoreUsecase(rp, tr, vh)
+	uc := usecase.NewStoreUsecase(rp, c.UnitOfWork, c.Validator)
 	r.handler = handler.NewStoreHandler(uc)
 }
 

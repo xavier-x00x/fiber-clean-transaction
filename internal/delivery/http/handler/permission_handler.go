@@ -140,3 +140,30 @@ func (h *PermissionHandler) DeletePermission(c *fiber.Ctx) error {
 		"message": "Data deleted successfully",
 	})
 }
+
+func (h *PermissionHandler) SyncPermission(c *fiber.Ctx) error {
+	permissionsRequest := make([]*dto.PermissionRequest, 0)
+
+	var body struct {
+		Permissions []*dto.PermissionRequest `json:"permissions"`
+	}
+
+	println("Syncing permissions...")
+	if err := c.BodyParser(&body); err != nil {
+		errx := utils.BadRequest(err.Error())
+		return ResponseError(c, errx)
+	}
+
+	permissionsRequest = body.Permissions
+	err := h.PermissionUsecase.SyncPermissions(c.UserContext(), permissionsRequest)
+
+	if err != nil {
+		return ResponseError(c, err)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"success": true,
+		"status":  fiber.StatusOK,
+		"message": "Permissions synced successfully",
+	})
+}

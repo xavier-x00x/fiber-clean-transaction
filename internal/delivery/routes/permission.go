@@ -3,9 +3,7 @@ package routes
 import (
 	"fiber-clean-transaction/internal/delivery/http/handler"
 	"fiber-clean-transaction/internal/domain/infrastructure"
-	"fiber-clean-transaction/internal/transaction"
 	"fiber-clean-transaction/internal/usecase"
-	"fiber-clean-transaction/pkg/validation"
 )
 
 type PermissionRoutes struct {
@@ -18,10 +16,8 @@ func (r *PermissionRoutes) GetModuleName() string {
 
 func (r *PermissionRoutes) RegisterHandler(c HandlerContainer) {
 	// Initialize dependencies khusus untuk route ini
-	tr := transaction.NewGormUnitOfWork(c.DB)
-	vh := validation.NewValidatorHelper(c.DB)
 	rp := infrastructure.NewPermissionRepository(c.DB)
-	uc := usecase.NewPermissionUsecase(rp, tr, vh)
+	uc := usecase.NewPermissionUsecase(rp, c.UnitOfWork, c.Validator)
 	r.handler = handler.NewPermissionHandler(uc)
 }
 
@@ -35,4 +31,5 @@ func (r *PermissionRoutes) RegisterRoutes(c RouteContainer) {
 	route.Post("/", r.handler.CreatePermission)
 	route.Put("/:id", r.handler.UpdatePermission)
 	route.Delete("/:id", r.handler.DeletePermission)
+	route.Post("/sync-permissions", r.handler.SyncPermission)
 }

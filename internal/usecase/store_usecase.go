@@ -24,7 +24,7 @@ func NewStoreUsecase(r repository.StoreRepository, uow transaction.UnitOfWork, v
 	}
 }
 
-func (u *StoreUsecase) GetAllFilter(meta *dto.MetaRequest) ([]entity.Store, *entity.Meta, error) {
+func (u *StoreUsecase) GetAllFilter(meta *dto.MetaRequest) ([]dto.StoreResponse, *entity.Meta, error) {
 	allowedOrder := []string{"id", "code", "name", "updated_at"}
 	searchColumns := []string{"id", "code", "name"}
 
@@ -35,7 +35,25 @@ func (u *StoreUsecase) GetAllFilter(meta *dto.MetaRequest) ([]entity.Store, *ent
 	if err != nil {
 		return nil, nil, utils.Internal(err.Error(), err)
 	}
-	return data, resMeta, nil
+
+	response := make([]dto.StoreResponse, len(data))
+	for i, item := range data {
+		response[i] = dto.StoreResponse{
+			ID:        item.ID,
+			Code:      item.Code,
+			Name:      item.Name,
+			Npwp:      item.Npwp,
+			Address:   item.Address,
+			Phone:     item.Phone,
+			Email:     item.Email,
+			Phone2:    item.Phone2,
+			Email2:    item.Email2,
+			Status:    item.Status,
+			UpdatedAt: item.UpdatedAt,
+		}
+	}
+
+	return response, resMeta, nil
 }
 
 func (u *StoreUsecase) FindByID(ID uint) (*entity.Store, error) {

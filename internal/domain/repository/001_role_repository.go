@@ -14,4 +14,6 @@ type RoleRepository interface {
 	AssignPermission(ctx context.Context, role *entity.Role, permissions []entity.Permission) error
 	Delete(ctx context.Context, ID uint) error
 	ClearPermissions(ctx context.Context, role *entity.Role) error
+	AccessPermission(role_name string, permission_name string) (*entity.Role, error)
+	GetPermissionsByRole(ctx context.Context, roleName string) ([]entity.Permission, error)
 }
